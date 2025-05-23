@@ -2,12 +2,43 @@
 
 A professional web application for reviewing GitHub pull requests using AI-powered insights. This application allows users to connect their GitHub account, view their repositories, and configure different LLM providers for PR analysis.
 
+## AI Review Setup
+
+The application supports multiple AI providers for code review generation:
+
+### Ollama (Local AI)
+1. Install Ollama from [https://ollama.ai](https://ollama.ai)
+2. Pull the codellama model:
+   ```bash
+   ollama pull codellama
+   ```
+3. Start Ollama service:
+   ```bash
+   ollama serve
+   ```
+4. The service will run on `http://localhost:11434`
+
+### Google Gemini
+1. Get API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Set the API key in your environment or use it directly in the app
+
+### OpenAI
+1. Get API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+2. Set the API key in your environment or use it directly in the app
+
+### Demo Mode
+If no AI service is available, the application will automatically use demo review comments for demonstration purposes.
+
 ## Features
 
-- **GitHub Integration**: Login with GitHub and access your repositories
-- **Repository Dashboard**: View all your GitHub repositories with detailed information
-- **Multiple LLM Providers**: Configure and use OpenAI, Google Gemini, or Ollama for PR reviews
-- **Customizable Settings**: Set API keys, models, and other provider-specific settings
+- 🎨 Modern UI/UX with gradient backgrounds and glass morphism effects
+- ⚡ Performance optimized with Next.js caching (5-minute TTL for most data)
+- 🤖 Multiple AI providers (Ollama, Gemini, OpenAI) with automatic fallbacks
+- 📱 Responsive design that works on all screen sizes
+- 🔍 Advanced PR filtering and search capabilities
+- 💬 AI-powered code review with approval/rejection workflow
+- 📊 Real-time GitHub integration with repository and organization support
+- 🎯 Detailed PR view with syntax-highlighted diffs
 
 ## Getting Started
 
