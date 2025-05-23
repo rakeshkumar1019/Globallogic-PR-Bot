@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GlobalLogic PR Review Agent
+
+A professional web application for reviewing GitHub pull requests using AI-powered insights. This application allows users to connect their GitHub account, view their repositories, and configure different LLM providers for PR analysis.
+
+## Features
+
+- **GitHub Integration**: Login with GitHub and access your repositories
+- **Repository Dashboard**: View all your GitHub repositories with detailed information
+- **Multiple LLM Providers**: Configure and use OpenAI, Google Gemini, or Ollama for PR reviews
+- **Customizable Settings**: Set API keys, models, and other provider-specific settings
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18.x or higher
+- A GitHub account
+- GitHub OAuth App credentials (Client ID and Secret)
+
+### Setup
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/yourusername/globallogic-pr-bot.git
+cd globallogic-pr-bot
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Create a `.env.local` file based on the example:
+
+```bash
+cp .env.local.example .env.local
+```
+
+4. Update the `.env.local` file with your GitHub OAuth credentials and NextAuth secret:
+
+```
+GITHUB_ID=your_github_client_id
+GITHUB_SECRET=your_github_client_secret
+NEXTAUTH_SECRET=your_random_secret_key
+NEXTAUTH_URL=http://localhost:3000
+```
+
+5. Start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+6. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Creating GitHub OAuth App
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Go to GitHub Settings > Developer Settings > OAuth Apps > New OAuth App
+2. Fill in the application details:
+   - Application name: GlobalLogic PR Review Agent
+   - Homepage URL: http://localhost:3000
+   - Authorization callback URL: http://localhost:3000/api/auth/callback/github
+3. Register the application and copy the Client ID and Client Secret to your `.env.local` file
 
-## Learn More
+## LLM Provider Configuration
 
-To learn more about Next.js, take a look at the following resources:
+The application supports three LLM providers:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### OpenAI
+- Requires an API key from [OpenAI Platform](https://platform.openai.com/)
+- Supports various models including GPT-4
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Google Gemini
+- Requires an API key from [Google AI Studio](https://ai.google.dev/)
+- Supports Gemini models
 
-## Deploy on Vercel
+### Ollama
+- Self-hosted option for running models locally
+- Configure the base URL (default: http://localhost:11434)
+- Choose from available models in your Ollama instance
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project is licensed under the MIT License - see the LICENSE file for details.
+# Globallogic-PR-Bot
