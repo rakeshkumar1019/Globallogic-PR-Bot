@@ -1,6 +1,4 @@
-import { LLMProviderConfig, LLMProviderType, LLMSettings } from './types';
-
-const LOCAL_STORAGE_KEY = 'globallogic-pr-bot-settings';
+import { LLMSettings } from '@/lib/llm-providers/types';
 
 const DEFAULT_SETTINGS: LLMSettings = {
   activeProvider: 'openai',
@@ -26,51 +24,30 @@ const DEFAULT_SETTINGS: LLMSettings = {
   },
 };
 
-export function getSettings(): LLMSettings {
-  if (typeof window === 'undefined') {
-    return DEFAULT_SETTINGS;
-  }
-  
-  const storedSettings = localStorage.getItem(LOCAL_STORAGE_KEY);
-  
-  if (!storedSettings) {
-    return DEFAULT_SETTINGS;
-  }
-  
+export async function getSettings(user: string): Promise<LLMSettings> {
   try {
-    return JSON.parse(storedSettings) as LLMSettings;
-  } catch (error) {
-    console.error('Failed to parse stored settings:', error);
+    const res = await fetch(`/api/settings?user=${encodeURIComponent(user)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch');
+    const data = await res.json();
+    if (!data) return DEFAULT_SETTINGS;
+    return data;
+  } catch {
     return DEFAULT_SETTINGS;
   }
 }
 
-export function saveSettings(settings: LLMSettings): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  
-  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(settings));
+export async function saveSettings(user: string, settings: LLMSettings): Promise<void> {
+  await fetch('/api/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user, settings }),
+  });
 }
 
-export function updateProviderConfig(
-  type: LLMProviderType,
-  config: Partial<LLMProviderConfig>
-): LLMSettings {
-  const settings = getSettings();
-  
-  settings.providers[type] = {
-    ...settings.providers[type],
-    ...config,
-  };
-  
-  saveSettings(settings);
-  return settings;
+export function updateProviderConfig(): LLMSettings {
+  throw new Error('updateProviderConfig should not be used for persistent storage');
 }
 
-export function setActiveProvider(type: LLMProviderType): LLMSettings {
-  const settings = getSettings();
-  settings.activeProvider = type;
-  saveSettings(settings);
-  return settings;
+export function setActiveProvider(): LLMSettings {
+  throw new Error('setActiveProvider should not be used for persistent storage');
 } 

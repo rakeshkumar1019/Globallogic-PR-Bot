@@ -10,5 +10,5 @@ export interface LLMProviderConfig {
 
 export interface LLMSettings {
   providers: Record<LLMProviderType, LLMProviderConfig>;
-  activeProvider: LLMProviderType;
+  activeProvider?: LLMProviderType;
 } 

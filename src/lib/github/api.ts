@@ -49,7 +49,6 @@ export interface PullRequest {
     sha: string;
   };
   draft?: boolean;
-  [key: string]: any; // Allow additional properties from GitHub API
 }
 
 export interface PullRequestFilters {

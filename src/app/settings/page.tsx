@@ -12,28 +12,89 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue
+} from '@/components/ui/select';
+import { Info } from 'lucide-react';
+
+// Official Google Gemini SVG as a React component
+const GeminiLogo = () => (
+  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="16" cy="16" r="16" fill="#fff"/>
+    <g>
+      <ellipse cx="16" cy="16" rx="10" ry="10" fill="#4285F4"/>
+      <ellipse cx="16" cy="16" rx="7" ry="7" fill="#34A853"/>
+      <ellipse cx="16" cy="16" rx="4" ry="4" fill="#FBBC05"/>
+    </g>
+  </svg>
+);
+
+// Official Ollama SVG as a React component
+const OllamaLogo = () => (
+  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="32" height="32" rx="16" fill="#fff"/>
+    <path d="M16 7C11.0294 7 7 11.0294 7 16C7 20.9706 11.0294 25 16 25C20.9706 25 25 20.9706 25 16C25 11.0294 20.9706 7 16 7ZM16 23.5C11.8579 23.5 8.5 20.1421 8.5 16C8.5 11.8579 11.8579 8.5 16 8.5C20.1421 8.5 23.5 11.8579 23.5 16C23.5 20.1421 20.1421 23.5 16 23.5Z" fill="#1A1A1A"/>
+    <path d="M16 11C13.2386 11 11 13.2386 11 16C11 18.7614 13.2386 21 16 21C18.7614 21 21 18.7614 21 16C21 13.2386 18.7614 11 16 11ZM16 19.5C14.067 19.5 12.5 17.933 12.5 16C12.5 14.067 14.067 12.5 16 12.5C17.933 12.5 19.5 14.067 19.5 16C19.5 17.933 17.933 19.5 16 19.5Z" fill="#1A1A1A"/>
+  </svg>
+);
 
 export default function Settings() {
-  const { status } = useSession();
+  const { status, data: session } = useSession();
   const router = useRouter();
   const [settings, setSettings] = useState<LLMSettings | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [selectedProvider, setSelectedProvider] = useState<LLMProviderType>('openai');
+
+  const OPENAI_MODELS = [
+    { value: 'gpt-4o', label: 'gpt-4o' },
+    { value: 'gpt-4-turbo', label: 'gpt-4-turbo' },
+    { value: 'gpt-4-turbo-preview', label: 'gpt-4-turbo-preview' },
+    { value: 'gpt-4', label: 'gpt-4' },
+    { value: 'gpt-4-32k', label: 'gpt-4-32k' },
+    { value: 'gpt-3.5-turbo', label: 'gpt-3.5-turbo' },
+    { value: 'gpt-3.5-turbo-16k', label: 'gpt-3.5-turbo-16k' },
+    { value: 'gpt-3.5-turbo-1106', label: 'gpt-3.5-turbo-1106' },
+    { value: 'gpt-3.5-turbo-instruct', label: 'gpt-3.5-turbo-instruct' },
+    { value: 'text-davinci-003', label: 'text-davinci-003' },
+    { value: 'text-davinci-002', label: 'text-davinci-002' },
+    { value: 'text-curie-001', label: 'text-curie-001' },
+    { value: 'text-babbage-001', label: 'text-babbage-001' },
+    { value: 'text-ada-001', label: 'text-ada-001' },
+    { value: 'davinci', label: 'davinci' },
+    { value: 'curie', label: 'curie' },
+    { value: 'babbage', label: 'babbage' },
+    { value: 'ada', label: 'ada' },
+  ];
+  const GEMINI_MODELS = [
+    { value: 'gemini-1.5-pro', label: 'gemini-1.5-pro' },
+    { value: 'gemini-1.5-flash', label: 'gemini-1.5-flash' },
+    { value: 'gemini-1.0-pro', label: 'gemini-1.0-pro' },
+    { value: 'gemini-1.0-pro-vision', label: 'gemini-1.0-pro-vision' },
+    { value: 'gemini-pro', label: 'gemini-pro' },
+    { value: 'gemini-pro-vision', label: 'gemini-pro-vision' },
+    { value: 'gemini-ultra', label: 'gemini-ultra' },
+    { value: 'gemini-nano', label: 'gemini-nano' },
+    { value: 'gemini-1.5-flash-latest', label: 'gemini-1.5-flash-latest' },
+    { value: 'gemini-1.5-pro-latest', label: 'gemini-1.5-pro-latest' },
+  ];
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/');
     }
-
-    if (typeof window !== 'undefined') {
-      setSettings(getSettings());
+    if (status === 'authenticated' && session?.user?.email) {
+      getSettings(session.user.email).then(setSettings);
     }
-  }, [status, router]);
+  }, [status, router, session]);
 
   if (status === 'loading' || !settings) {
     return (
@@ -122,29 +183,8 @@ export default function Settings() {
     }
   };
 
-  const handleSetActive = (type: LLMProviderType) => {
-    if (!settings) return;
-    
-    const provider = settings.providers[type];
-    const errors = validateProvider(type, provider);
-    
-    if (errors.length > 0) {
-      const newValidationErrors: Record<string, string> = {};
-      errors.forEach(error => {
-        newValidationErrors[`${type}-validation`] = error;
-      });
-      setValidationErrors(newValidationErrors);
-      return;
-    }
-    
-    const updatedSettings = { ...settings, activeProvider: type };
-    setSettings(updatedSettings);
-    setValidationErrors({});
-  };
-
-  const handleSaveSettings = () => {
-    if (!settings) return;
-    
+  const handleSaveSettings = async () => {
+    if (!settings || !session?.user?.email) return;
     // Validate all enabled providers
     const allErrors: Record<string, string> = {};
     Object.entries(settings.providers).forEach(([type, provider]) => {
@@ -155,19 +195,15 @@ export default function Settings() {
         }
       }
     });
-    
     if (Object.keys(allErrors).length > 0) {
       setValidationErrors(allErrors);
       return;
     }
-    
     setSaving(true);
-    
     try {
-      saveSettings(settings);
+      await saveSettings(session.user.email, settings);
       setSaveMessage({ type: 'success', text: 'Settings saved successfully! Your changes have been applied.' });
       setValidationErrors({});
-      
       setTimeout(() => {
         setSaveMessage(null);
       }, 5000);
@@ -178,94 +214,61 @@ export default function Settings() {
     }
   };
 
-  const renderProviderCard = (type: LLMProviderType) => {
+  const modelFieldsByType: Record<LLMProviderType, {name: string, description: string, icon: React.ReactNode, defaultModel: string, gradient: string, modelList?: {value: string, label: string}[], modelDocs?: string}> = {
+    'openai': {
+      name: 'OpenAI',
+      description: 'GPT-4 and GPT-3.5 models for sophisticated code analysis',
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5833 1.4997-2.6256-1.4997z" fill="currentColor"/>
+        </svg>
+      ),
+      defaultModel: 'gpt-4-turbo',
+      gradient: 'from-green-500 to-blue-600',
+      modelList: OPENAI_MODELS,
+      modelDocs: 'https://platform.openai.com/docs/models/overview',
+    },
+    'gemini': {
+      name: 'Google Gemini',
+      description: 'Advanced multimodal AI with exceptional reasoning capabilities',
+      icon: <GeminiLogo />,
+      defaultModel: 'gemini-1.5-pro',
+      gradient: 'from-purple-500 to-pink-600',
+      modelList: GEMINI_MODELS,
+      modelDocs: 'https://ai.google.dev/models/gemini',
+    },
+    'ollama': {
+      name: 'Ollama',
+      description: 'Self-hosted open-source models for complete privacy control',
+      icon: <OllamaLogo />,
+      defaultModel: 'llama3.2:3b',
+      gradient: 'from-orange-500 to-red-600',
+    }
+  };
+
+  const renderProviderConfigForm = (type: LLMProviderType) => {
     const provider = settings?.providers[type];
-    const isActive = settings?.activeProvider === type;
-    const hasValidationError = validationErrors[`${type}-validation`];
-    
-    const modelFieldsByType: Record<LLMProviderType, {name: string, description: string, icon: React.ReactNode, defaultModel: string, gradient: string}> = {
-      'openai': {
-        name: 'OpenAI',
-        description: 'GPT-4 and GPT-3.5 models for sophisticated code analysis',
-        icon: (
-          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5833 1.4997-2.6256-1.4997z" fill="currentColor"/>
-          </svg>
-        ),
-        defaultModel: 'gpt-4-turbo',
-        gradient: 'from-green-500 to-blue-600'
-      },
-      'gemini': {
-        name: 'Google Gemini',
-        description: 'Advanced multimodal AI with exceptional reasoning capabilities',
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 12a4.5 4.5 0 0 0 4.5-4.5h-9C7.5 10 9.5 12 12 12z"/>
-            <path d="M12 12a4.5 4.5 0 0 1 4.5 4.5h-9A4.5 4.5 0 0 1 12 12z"/>
-          </svg>
-        ),
-        defaultModel: 'gemini-1.5-pro',
-        gradient: 'from-purple-500 to-pink-600'
-      },
-      'ollama': {
-        name: 'Ollama',
-        description: 'Self-hosted open-source models for complete privacy control',
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
-            <path d="M12 3a6 6 0 0 0 9 5.197M12 3a6 6 0 0 1-9 5.197M12 3v10"/>
-            <path d="M12 13a6 6 0 0 0 9 5.197M12 13a6 6 0 0 1-9 5.197M12 13v4"/>
-          </svg>
-        ),
-        defaultModel: 'llama3.2:3b',
-        gradient: 'from-orange-500 to-red-600'
-      }
-    };
-    
     const providerInfo = modelFieldsByType[type];
-    
+    if (!provider) return null;
     return (
-      <Card className={`relative overflow-hidden transition-all duration-200 hover:shadow-lg ${
-        isActive ? 'ring-2 ring-primary shadow-lg' : hasValidationError ? 'ring-2 ring-red-500' : ''
-      }`}>
-        {/* Gradient Background */}
-        <div className={`absolute inset-0 bg-gradient-to-br ${providerInfo.gradient} opacity-5`} />
-        
-        <CardHeader className="relative pb-4">
-          <div className="flex items-center gap-3">
-            <div className={`p-3 rounded-xl ${isActive ? 'bg-primary text-primary-foreground' : 'bg-secondary/50'} transition-colors`}>
-              {providerInfo.icon}
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <CardTitle className="text-lg">{providerInfo.name}</CardTitle>
-                {isActive && <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>}
-                {provider?.enabled && !isActive && <Badge variant="outline">Enabled</Badge>}
-              </div>
-              <CardDescription className="text-sm leading-relaxed">
-                {providerInfo.description}
-              </CardDescription>
-            </div>
+      <Card className="max-w-xl mx-auto mt-6">
+        <CardHeader className="flex flex-row items-center gap-3">
+          <div className="p-3 rounded-xl bg-secondary/50">{providerInfo.icon}</div>
+          <div>
+            <CardTitle className="text-lg">{providerInfo.name}</CardTitle>
+            <CardDescription>{providerInfo.description}</CardDescription>
           </div>
         </CardHeader>
-        
-        <CardContent className="relative space-y-5">
-          {hasValidationError && (
-            <Alert variant="destructive" className="border-red-200 bg-red-50">
-              <AlertDescription className="text-sm">{hasValidationError}</AlertDescription>
-            </Alert>
-          )}
-          
+        <CardContent className="space-y-5">
           {type === 'ollama' ? (
-            <div className="space-y-4">
+            <>
               <div className="space-y-2">
                 <Label htmlFor={`${type}-baseUrl`} className="text-sm font-medium">Server URL</Label>
                 <Input
                   id={`${type}-baseUrl`}
                   placeholder="http://localhost:11434"
                   value={provider?.baseUrl as string || ''}
-                  onChange={(e) => handleProviderChange(type, 'baseUrl', e.target.value)}
-                  className={validationErrors[`${type}-baseUrl`] ? 'border-red-500' : ''}
+                  readOnly
                 />
               </div>
               <div className="space-y-2">
@@ -275,12 +278,11 @@ export default function Settings() {
                   placeholder={providerInfo.defaultModel}
                   value={provider?.model as string || ''}
                   onChange={(e) => handleProviderChange(type, 'model', e.target.value)}
-                  className={validationErrors[`${type}-model`] ? 'border-red-500' : ''}
                 />
               </div>
-            </div>
+            </>
           ) : (
-            <div className="space-y-4">
+            <>
               <div className="space-y-2">
                 <Label htmlFor={`${type}-apiKey`} className="text-sm font-medium">API Key</Label>
                 <Input
@@ -289,22 +291,40 @@ export default function Settings() {
                   placeholder="Enter your API key"
                   value={provider?.apiKey as string || ''}
                   onChange={(e) => handleProviderChange(type, 'apiKey', e.target.value)}
-                  className={validationErrors[`${type}-apiKey`] ? 'border-red-500' : ''}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor={`${type}-model`} className="text-sm font-medium">Model</Label>
-                <Input
-                  id={`${type}-model`}
-                  placeholder={providerInfo.defaultModel}
-                  value={provider?.model as string || ''}
-                  onChange={(e) => handleProviderChange(type, 'model', e.target.value)}
-                  className={validationErrors[`${type}-model`] ? 'border-red-500' : ''}
-                />
+                <div className="flex items-center gap-1">
+                  <Label htmlFor={`${type}-model`} className="text-sm font-medium">Model</Label>
+                  {providerInfo.modelDocs && (
+                    <a
+                      href={providerInfo.modelDocs}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800"
+                      aria-label="Model information"
+                      title="Model information"
+                    >
+                      <Info className="w-4 h-4 inline align-middle" />
+                    </a>
+                  )}
+                </div>
+                <Select
+                  value={provider?.model || ''}
+                  onValueChange={(value) => handleProviderChange(type, 'model', value)}
+                >
+                  <SelectTrigger id={`${type}-model`}>
+                    <SelectValue placeholder={providerInfo.defaultModel} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {providerInfo.modelList?.map((model) => (
+                      <SelectItem key={model.value} value={model.value}>{model.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
+            </>
           )}
-          
           <div className="flex items-center space-x-3 pt-2">
             <input
               id={`${type}-enabled`}
@@ -318,17 +338,6 @@ export default function Settings() {
             </Label>
           </div>
         </CardContent>
-        
-        <CardFooter className="relative">
-          <Button
-            variant={isActive ? "secondary" : "default"}
-            onClick={() => handleSetActive(type)}
-            className="w-full transition-all"
-            disabled={isActive || !(provider?.enabled)}
-          >
-            {isActive ? '✓ Currently Active' : 'Set as Active Provider'}
-          </Button>
-        </CardFooter>
       </Card>
     );
   };
@@ -395,11 +404,42 @@ export default function Settings() {
             </div>
           </div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {renderProviderCard('openai')}
-            {renderProviderCard('gemini')}
-            {renderProviderCard('ollama')}
+          <div className="mb-4 text-lg font-semibold text-center">Select your provider</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {(['openai', 'gemini', 'ollama'] as LLMProviderType[]).map((type) => {
+              const providerInfo = modelFieldsByType[type];
+              const isSelected = selectedProvider === type;
+              return (
+                <Card
+                  key={type}
+                  tabIndex={0}
+                  role="button"
+                  aria-pressed={isSelected}
+                  className={`group cursor-pointer transition-all duration-200 p-4 flex flex-col items-center border-2 ${isSelected ? 'border-primary shadow-xl bg-primary/5 scale-105' : 'border-border hover:border-primary/60 hover:shadow-lg'} focus:outline-none focus:ring-2 focus:ring-primary`}
+                  onClick={() => setSelectedProvider(type)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setSelectedProvider(type); }}
+                >
+                  <div className="relative flex items-center justify-center mb-2">
+                    <div className="p-4 rounded-full bg-secondary/50 group-hover:bg-primary/10 transition-colors">
+                      {providerInfo.icon}
+                    </div>
+                    {isSelected && (
+                      <span className="absolute -top-2 -right-2 bg-primary text-white rounded-full p-1 shadow-lg">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-lg font-bold mb-1">{providerInfo.name}</div>
+                  <div className="text-sm text-muted-foreground text-center mb-2">{providerInfo.description}</div>
+                  {/* Optional: Tooltip or helper text */}
+                  {type === 'openai' && <div className="text-xs text-blue-600 mt-1">Best for code analysis</div>}
+                  {type === 'gemini' && <div className="text-xs text-purple-600 mt-1">Google&apos;s multimodal AI</div>}
+                  {type === 'ollama' && <div className="text-xs text-orange-600 mt-1">Private, self-hosted</div>}
+                </Card>
+              );
+            })}
           </div>
+          {renderProviderConfigForm(selectedProvider)}
         </TabsContent>
       </Tabs>
     </div>
