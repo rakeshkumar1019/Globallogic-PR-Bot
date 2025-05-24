@@ -10,7 +10,7 @@ export interface AIReviewComment {
   endLine?: number;
   provider: LLMProvider;
   timestamp: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'submitted';
   isEditing?: boolean;
   originalContent?: string;
   lineContent?: string;

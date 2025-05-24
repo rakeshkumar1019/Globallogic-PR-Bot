@@ -199,6 +199,7 @@ export function DashboardContent() {
             repositories={repositories}
             pullRequests={pullRequests}
             userProfile={userProfile}
+            onToggleRepo={toggleRepo}
           />
         );
       case 'pull-requests':
@@ -229,6 +230,7 @@ export function DashboardContent() {
             repositories={repositories}
             pullRequests={pullRequests}
             userProfile={userProfile}
+            onToggleRepo={toggleRepo}
           />
         );
     }

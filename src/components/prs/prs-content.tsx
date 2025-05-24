@@ -137,7 +137,7 @@ export function PullRequestsContent() {
   }
 
   const getBreadcrumbs = () => [
-    { label: "Pull Requests", href: "/prs" }
+            { label: "Pull Requests", href: "/pull-request" }
   ];
 
   return (
