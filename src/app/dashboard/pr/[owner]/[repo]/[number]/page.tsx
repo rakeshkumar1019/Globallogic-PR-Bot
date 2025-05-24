@@ -14,9 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   ArrowLeft, GitBranch, Clock, FileText, Plus, Minus, Brain, Check, X, Send, 
-  AlertCircle, Settings, ChevronDown, ChevronRight, Eye, Code 
+  AlertCircle, Settings, ChevronDown, ChevronRight, Eye, Code, Edit3, Save, RotateCcw 
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -44,6 +45,7 @@ export default function PRDetailPage() {
   const [isLoadingPR, setIsLoadingPR] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
+  const [editingComments, setEditingComments] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (session?.accessToken && params.owner && params.repo && params.number) {
@@ -196,19 +198,30 @@ export default function PRDetailPage() {
           throw new Error(errorData.error || 'Failed to generate AI review');
         }
 
-        const { comment, provider } = await response.json();
+        const { comments, provider } = await response.json();
 
-        const aiComment: AIReviewComment = {
-          id: `ai-review-${Date.now()}`,
-          content: comment,
-          filePath: '',
-          startLine: 0,
-          provider: provider,
-          status: 'pending',
-          timestamp: new Date().toISOString()
-        };
+        if (comments && comments.length > 0) {
+          setReviewComments(comments);
+        } else {
+          // No issues found
+          const noIssuesComment: AIReviewComment = {
+            id: `no-issues-${Date.now()}`,
+            content: `## ✅ No Issues Found
 
-        setReviewComments([aiComment]);
+The AI review did not identify any significant issues in the code changes. The changes appear to follow good practices and coding standards.
+
+**Files Analyzed:** ${fileChanges.length} files  
+**Provider:** ${provider}
+
+Great work! The code looks clean and well-structured.`,
+            filePath: '',
+            startLine: 0,
+            provider: provider,
+            status: 'pending',
+            timestamp: new Date().toISOString()
+          };
+          setReviewComments([noIssuesComment]);
+        }
       } else {
         const settingsComment: AIReviewComment = {
           id: `settings-required-${Date.now()}`,
@@ -281,6 +294,59 @@ Please configure your AI settings and try again.`,
         comment.id === commentId ? { ...comment, status } : comment
       )
     );
+  };
+
+  const handleEditComment = (commentId: string) => {
+    const comment = reviewComments.find(c => c.id === commentId);
+    if (comment) {
+      setEditingComments(prev => ({
+        ...prev,
+        [commentId]: comment.content
+      }));
+      setReviewComments(comments =>
+        comments.map(comment =>
+          comment.id === commentId ? { ...comment, isEditing: true } : comment
+        )
+      );
+    }
+  };
+
+  const handleSaveComment = (commentId: string) => {
+    const editedContent = editingComments[commentId];
+    if (editedContent !== undefined) {
+      setReviewComments(comments =>
+        comments.map(comment =>
+          comment.id === commentId 
+            ? { ...comment, content: editedContent, isEditing: false }
+            : comment
+        )
+      );
+      setEditingComments(prev => {
+        const newState = { ...prev };
+        delete newState[commentId];
+        return newState;
+      });
+    }
+  };
+
+  const handleCancelEdit = (commentId: string) => {
+    setReviewComments(comments =>
+      comments.map(comment =>
+        comment.id === commentId ? { ...comment, isEditing: false } : comment
+      )
+    );
+    setEditingComments(prev => {
+      const newState = { ...prev };
+      delete newState[commentId];
+      return newState;
+    });
+  };
+
+  const handleEditContentChange = (commentId: string, content: string) => {
+    setEditingComments(prev => ({
+      ...prev,
+      [commentId]: content
+    }));
   };
 
   const handleSubmitComments = async () => {
@@ -581,72 +647,166 @@ Please configure your AI settings and try again.`,
                 </div>
               ) : (
                 <>
-                  <div className="space-y-3">
-                    {reviewComments.map((comment) => (
-                      <Card key={comment.id} className="border-l-4 border-l-purple-500">
-                        <CardContent className="p-3">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center gap-2 text-xs text-gray-600">
-                              <Eye className="h-3 w-3" />
-                              <span>AI Review</span>
+                  <div className="space-y-4">
+                    {/* Group comments by file */}
+                    {(() => {
+                      const commentsByFile = reviewComments.reduce((acc, comment) => {
+                        const key = comment.filePath || 'general';
+                        if (!acc[key]) acc[key] = [];
+                        acc[key].push(comment);
+                        return acc;
+                      }, {} as Record<string, AIReviewComment[]>);
+
+                      return Object.entries(commentsByFile).map(([filePath, comments]) => (
+                        <div key={filePath}>
+                          {filePath !== 'general' && (
+                            <div className="flex items-center gap-2 mb-2 text-sm font-medium text-gray-700">
+                              <FileText className="h-4 w-4" />
+                              <code className="bg-gray-100 px-2 py-1 rounded text-sm">{filePath}</code>
+                              <Badge variant="outline" className="text-xs">{comments.length} issue{comments.length !== 1 ? 's' : ''}</Badge>
                             </div>
-                            <Badge 
-                              variant={comment.status === 'approved' ? 'default' : comment.status === 'rejected' ? 'destructive' : 'secondary'}
-                              className="text-xs"
-                            >
-                              {comment.status}
-                            </Badge>
+                          )}
+                          <div className="space-y-3 pl-6">
+                            {comments.map((comment) => (
+                              <Card key={comment.id} className="border-l-4 border-l-purple-500">
+                                <CardContent className="p-3">
+                                  <div className="flex items-start justify-between mb-3">
+                                    <div className="flex items-center gap-2 text-xs text-gray-600">
+                                      <Eye className="h-3 w-3" />
+                                      <span>AI Review</span>
+                                      {comment.startLine > 0 && (
+                                        <>
+                                          <span>•</span>
+                                          <span className="text-purple-600 font-medium">Line {comment.startLine}</span>
+                                        </>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Badge 
+                                        variant={comment.status === 'approved' ? 'default' : comment.status === 'rejected' ? 'destructive' : 'secondary'}
+                                        className="text-xs"
+                                      >
+                                        {comment.status}
+                                      </Badge>
+                                      {!comment.isEditing && (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleEditComment(comment.id)}
+                                          className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+                                        >
+                                          <Edit3 className="h-3 w-3" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Show code line if available */}
+                                  {comment.lineContent && (
+                                    <div className="mb-3 border border-gray-200 rounded">
+                                      <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
+                                        <span className="text-xs font-medium text-gray-600">Code at line {comment.startLine}:</span>
+                                      </div>
+                                      <div className={`px-3 py-2 font-mono text-xs ${
+                                        comment.lineType === 'added' ? 'bg-green-50 border-l-4 border-green-400' :
+                                        comment.lineType === 'removed' ? 'bg-red-50 border-l-4 border-red-400' :
+                                        'bg-gray-50 border-l-4 border-gray-300'
+                                      }`}>
+                                        <span className={
+                                          comment.lineType === 'added' ? 'text-green-800' :
+                                          comment.lineType === 'removed' ? 'text-red-800' :
+                                          'text-gray-700'
+                                        }>
+                                          {comment.lineType === 'added' ? '+' : comment.lineType === 'removed' ? '-' : ' '}
+                                          {comment.lineContent}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  <div className="prose prose-sm max-w-none mb-3">
+                                    <div className="text-sm text-gray-700">
+                                      {comment.isEditing ? (
+                                        <div className="space-y-3">
+                                          <Textarea
+                                            value={editingComments[comment.id] || comment.content}
+                                            onChange={(e) => handleEditContentChange(comment.id, e.target.value)}
+                                            className="min-h-[120px]"
+                                            placeholder="Edit your comment..."
+                                          />
+                                          <div className="flex gap-2">
+                                            <Button
+                                              size="sm"
+                                              onClick={() => handleSaveComment(comment.id)}
+                                              className="text-xs"
+                                            >
+                                              <Save className="h-3 w-3 mr-1" />
+                                              Save
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => handleCancelEdit(comment.id)}
+                                              className="text-xs"
+                                            >
+                                              <RotateCcw className="h-3 w-3 mr-1" />
+                                              Cancel
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <ReactMarkdown 
+                                          remarkPlugins={[remarkGfm]}
+                                          components={{
+                                            h1: ({children}) => <h1 className="text-lg font-bold text-gray-900 mb-2">{children}</h1>,
+                                            h2: ({children}) => <h2 className="text-base font-semibold text-gray-900 mb-2">{children}</h2>,
+                                            h3: ({children}) => <h3 className="text-sm font-semibold text-gray-900 mb-1">{children}</h3>,
+                                            p: ({children}) => <p className="mb-2 leading-relaxed">{children}</p>,
+                                            ul: ({children}) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
+                                            ol: ({children}) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
+                                            li: ({children}) => <li className="mb-1">{children}</li>,
+                                            code: ({children, className}) => {
+                                              const isInline = !className;
+                                              return isInline ? (
+                                                <code className="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono">{children}</code>
+                                              ) : (
+                                                <code className="block bg-gray-100 p-2 rounded text-xs font-mono overflow-x-auto">{children}</code>
+                                              );
+                                            },
+                                            strong: ({children}) => <strong className="font-semibold text-gray-900">{children}</strong>,
+                                          }}
+                                        >
+                                          {comment.content}
+                                        </ReactMarkdown>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant={comment.status === 'approved' ? 'default' : 'outline'}
+                                      onClick={() => handleCommentStatusChange(comment.id, 'approved')}
+                                      className="text-xs"
+                                    >
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant={comment.status === 'rejected' ? 'destructive' : 'outline'}
+                                      onClick={() => handleCommentStatusChange(comment.id, 'rejected')}
+                                      className="text-xs"
+                                    >
+                                      <X className="h-3 w-3 mr-1" />
+                                      Reject
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
                           </div>
-                          <div className="prose prose-sm max-w-none mb-3">
-                            <div className="text-sm text-gray-700">
-                              <ReactMarkdown 
-                                remarkPlugins={[remarkGfm]}
-                                components={{
-                                  h1: ({children}) => <h1 className="text-lg font-bold text-gray-900 mb-2">{children}</h1>,
-                                  h2: ({children}) => <h2 className="text-base font-semibold text-gray-900 mb-2">{children}</h2>,
-                                  h3: ({children}) => <h3 className="text-sm font-semibold text-gray-900 mb-1">{children}</h3>,
-                                  p: ({children}) => <p className="mb-2 leading-relaxed">{children}</p>,
-                                  ul: ({children}) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
-                                  ol: ({children}) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
-                                  li: ({children}) => <li className="mb-1">{children}</li>,
-                                  code: ({children, className}) => {
-                                    const isInline = !className;
-                                    return isInline ? (
-                                      <code className="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono">{children}</code>
-                                    ) : (
-                                      <code className="block bg-gray-100 p-2 rounded text-xs font-mono overflow-x-auto">{children}</code>
-                                    );
-                                  },
-                                  strong: ({children}) => <strong className="font-semibold text-gray-900">{children}</strong>,
-                                }}
-                              >
-                                {comment.content}
-                              </ReactMarkdown>
-                            </div>
-                          </div>
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant={comment.status === 'approved' ? 'default' : 'outline'}
-                              onClick={() => handleCommentStatusChange(comment.id, 'approved')}
-                              className="text-xs"
-                            >
-                              <Check className="h-3 w-3 mr-1" />
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant={comment.status === 'rejected' ? 'destructive' : 'outline'}
-                              onClick={() => handleCommentStatusChange(comment.id, 'rejected')}
-                              className="text-xs"
-                            >
-                              <X className="h-3 w-3 mr-1" />
-                              Reject
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                        </div>
+                      ));
+                    })()}
                   </div>
 
                   {reviewComments.filter(c => c.status === 'approved').length > 0 && (

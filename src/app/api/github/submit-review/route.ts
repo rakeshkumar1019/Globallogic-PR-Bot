@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/auth-options';
 import { AIReviewComment } from '@/lib/types';
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session?.accessToken) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
@@ -21,17 +22,43 @@ export async function POST(request: Request) {
       comments: AIReviewComment[];
     };
 
-    // Group comments by file
-    const commentsByFile = comments.reduce((acc, comment) => {
-      if (!acc[comment.filePath]) {
-        acc[comment.filePath] = [];
-      }
-      acc[comment.filePath].push(comment);
-      return acc;
-    }, {} as Record<string, AIReviewComment[]>);
+    // Separate line comments and general comments
+    const lineComments = comments.filter(comment => comment.filePath && comment.startLine > 0);
+    const generalComments = comments.filter(comment => !comment.filePath || comment.startLine <= 0);
 
-    // Submit review comments to GitHub
     const [owner, repo] = pullRequest.base.repo.full_name.split('/');
+    
+    // Prepare review body from general comments
+    let reviewBody = '';
+    if (generalComments.length > 0) {
+      reviewBody = generalComments.map(comment => comment.content).join('\n\n---\n\n');
+    }
+    
+    // Prepare line comments for GitHub API
+    const githubLineComments = lineComments.map(comment => ({
+      path: comment.filePath,
+      line: comment.startLine,
+      body: comment.content
+    }));
+
+    // Submit review to GitHub
+    const reviewData: {
+      event: string;
+      body?: string;
+      comments?: Array<{ path: string; line: number; body: string }>;
+    } = {
+      event: 'COMMENT'
+    };
+    
+    // Only add body if there are general comments
+    if (reviewBody) {
+      reviewData.body = reviewBody;
+    }
+    
+    if (githubLineComments.length > 0) {
+      reviewData.comments = githubLineComments;
+    }
+
     const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullRequest.number}/reviews`, {
       method: 'POST',
       headers: {
@@ -39,16 +66,7 @@ export async function POST(request: Request) {
         'Accept': 'application/vnd.github.v3+json',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        event: 'COMMENT',
-        comments: Object.entries(commentsByFile).flatMap(([filePath, fileComments]) =>
-          fileComments.map(comment => ({
-            path: filePath,
-            line: comment.startLine,
-            body: comment.content
-          }))
-        )
-      })
+      body: JSON.stringify(reviewData)
     });
 
     if (!response.ok) {

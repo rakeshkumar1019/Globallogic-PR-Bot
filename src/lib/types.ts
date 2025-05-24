@@ -11,6 +11,10 @@ export interface AIReviewComment {
   provider: LLMProvider;
   timestamp: string;
   status: 'pending' | 'approved' | 'rejected';
+  isEditing?: boolean;
+  originalContent?: string;
+  lineContent?: string;
+  lineType?: 'added' | 'removed' | 'context';
 }
 
 export interface PRReview {

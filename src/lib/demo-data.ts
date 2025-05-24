@@ -1,4 +1,5 @@
 import { PullRequest, Repository, UserProfile } from './github/api';
+import { AIReviewComment } from './types';
 
 export const demoUserProfile: UserProfile = {
   login: 'demo-user',
@@ -169,4 +170,52 @@ export const demoPullRequests: PullRequest[] = [
     merged: false,
     draft: true,
   },
+];
+
+export const demoAIReviewComments: AIReviewComment[] = [
+  {
+    id: 'demo-review-1',
+    filePath: 'src/components/AuthForm.tsx',
+    startLine: 15,
+    content: '**Missing input validation**\n\nAdd proper validation for email format before submitting:\n```typescript\nconst isValidEmail = (email: string) => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);\n```',
+    provider: 'openai',
+    timestamp: '2024-01-16T10:30:00Z',
+    status: 'pending'
+  },
+  {
+    id: 'demo-review-2',
+    filePath: 'src/components/AuthForm.tsx',
+    startLine: 28,
+    content: '**Potential security vulnerability**\n\nPassword should be validated on both client and server side. Consider adding minimum requirements:\n```typescript\nconst validatePassword = (pwd: string) => pwd.length >= 8 && /[A-Z]/.test(pwd) && /[0-9]/.test(pwd);\n```',
+    provider: 'openai',
+    timestamp: '2024-01-16T10:30:00Z',
+    status: 'pending'
+  },
+  {
+    id: 'demo-review-3',
+    filePath: 'src/hooks/useAuth.ts',
+    startLine: 42,
+    content: '**Memory leak risk**\n\nUseEffect cleanup is missing. Add cleanup to prevent memory leaks:\n```typescript\nreturn () => {\n  controller.abort();\n  clearTimeout(timeoutId);\n};\n```',
+    provider: 'openai',
+    timestamp: '2024-01-16T10:30:00Z',
+    status: 'pending'
+  },
+  {
+    id: 'demo-review-4',
+    filePath: 'src/utils/api.ts',
+    startLine: 67,
+    content: '**Error handling improvement**\n\nCatch block should handle different error types appropriately:\n```typescript\nif (error.code === \'NETWORK_ERROR\') {\n  throw new NetworkError(\'Connection failed\');\n} else if (error.status === 401) {\n  throw new AuthenticationError(\'Invalid credentials\');\n}\n```',
+    provider: 'openai',
+    timestamp: '2024-01-16T10:30:00Z',
+    status: 'pending'
+  },
+  {
+    id: 'demo-review-5',
+    filePath: 'src/components/UserProfile.tsx',
+    startLine: 23,
+    content: '**Performance optimization**\n\nUseMemo would improve performance for expensive calculations:\n```typescript\nconst userStats = useMemo(() => calculateUserStats(userData), [userData]);\n```',
+    provider: 'openai',
+    timestamp: '2024-01-16T10:30:00Z',
+    status: 'pending'
+  }
 ]; 
