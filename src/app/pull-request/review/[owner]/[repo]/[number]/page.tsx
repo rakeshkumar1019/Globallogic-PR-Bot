@@ -358,41 +358,60 @@ Please configure your AI settings in the Settings page and try again.`,
         throw new Error('No access token available');
       }
 
-      // Create a comprehensive review body with all approved comments
-      let reviewBody = '## AI Code Review\n\n';
-      
-      // Group comments by file
-      const commentsByFile = approvedComments.reduce((acc, comment) => {
-        const key = comment.filePath || 'General Comments';
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(comment);
-        return acc;
-      }, {} as Record<string, typeof approvedComments>);
+      // Separate general comments from file-specific comments
+      const generalComments = approvedComments.filter(c => !c.filePath || c.filePath === '');
+      const fileComments = approvedComments.filter(c => c.filePath && c.filePath !== '' && c.startLine && c.startLine > 0);
 
-      // Format comments in the review body
-      Object.entries(commentsByFile).forEach(([filePath, comments]) => {
-        if (filePath !== 'General Comments') {
-          reviewBody += `### 📁 \`${filePath}\`\n\n`;
-        } else {
-          reviewBody += `### 📝 General Comments\n\n`;
-        }
-        
-        comments.forEach((comment, index) => {
-          if (comment.startLine && comment.startLine > 0) {
-            reviewBody += `**Line ${comment.startLine}:**\n\n`;
-          }
+      // Create review body for general comments
+      let reviewBody = '';
+      if (generalComments.length > 0) {
+        generalComments.forEach((comment, index) => {
           reviewBody += `${comment.content}\n\n`;
-          if (index < comments.length - 1) {
+          if (index < generalComments.length - 1) {
             reviewBody += '---\n\n';
           }
         });
-        reviewBody += '\n';
+      }
+
+      // Create line-specific comments for GitHub API
+      const lineComments = fileComments.map(comment => {
+        // For line comments, we need to find the position in the diff
+        // GitHub API expects diff position, not line number
+        // For now, we'll create file-level comments without specific positions
+        return {
+          path: comment.filePath!,
+          body: `**Line ${comment.startLine}**: ${comment.content}`,
+          // Note: GitHub API requires diff position for line comments
+          // Without access to diff parsing, we'll submit as file comments
+        };
       });
 
-      const reviewData = {
-        event: 'COMMENT' as const,
-        body: reviewBody
+      const reviewData: {
+        event: 'COMMENT';
+        body?: string;
+        comments?: Array<{
+          path: string;
+          body: string;
+        }>;
+      } = {
+        event: 'COMMENT'
       };
+
+      // Add general review body if we have general comments
+      if (reviewBody.trim()) {
+        reviewData.body = reviewBody.trim();
+      }
+
+      // Add file-specific comments
+      if (lineComments.length > 0) {
+        reviewData.comments = lineComments;
+      }
+
+      // If no comments at all, add a default body
+      if (!reviewData.body && (!reviewData.comments || reviewData.comments.length === 0)) {
+        reviewData.body = 'AI Code Review completed.';
+      }
+
 
       const response = await fetch(`https://api.github.com/repos/${params.owner}/${params.repo}/pulls/${params.number}/reviews`, {
         method: 'POST',
@@ -835,23 +854,48 @@ Please configure your AI settings in the Settings page and try again.`,
 
                                       {/* Show code line if available */}
                                       {comment.lineContent && (
-                                        <div className="mb-3 border border-gray-200 rounded">
-                                          <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
-                                            <span className="text-xs font-medium text-gray-600">Code at line {comment.startLine}:</span>
+                                        <div className="mb-3 border border-gray-300 rounded-lg shadow-sm">
+                                          <div className="px-4 py-2 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 rounded-t-lg">
+                                            <div className="flex items-center gap-2">
+                                              <Code className="h-4 w-4 text-gray-500" />
+                                              <span className="text-sm font-semibold text-gray-700">Line {comment.startLine}</span>
+                                              <Badge variant="outline" className={`text-xs ${
+                                                comment.lineType === 'added' ? 'border-green-500 text-green-700 bg-green-50' :
+                                                comment.lineType === 'removed' ? 'border-red-500 text-red-700 bg-red-50' :
+                                                'border-gray-500 text-gray-700 bg-gray-50'
+                                              }`}>
+                                                {comment.lineType === 'added' ? 'Added' : comment.lineType === 'removed' ? 'Removed' : 'Modified'}
+                                              </Badge>
+                                            </div>
                                           </div>
-                                          <div className={`px-3 py-2 font-mono text-xs ${
-                                            comment.lineType === 'added' ? 'bg-green-50 border-l-4 border-green-400' :
-                                            comment.lineType === 'removed' ? 'bg-red-50 border-l-4 border-red-400' :
-                                            'bg-gray-50 border-l-4 border-gray-300'
+                                          <div className={`relative group ${
+                                            comment.lineType === 'added' ? 'bg-green-50' :
+                                            comment.lineType === 'removed' ? 'bg-red-50' :
+                                            'bg-gray-50'
                                           }`}>
-                                            <span className={
-                                              comment.lineType === 'added' ? 'text-green-800' :
-                                              comment.lineType === 'removed' ? 'text-red-800' :
-                                              'text-gray-700'
-                                            }>
-                                              {comment.lineType === 'added' ? '+' : comment.lineType === 'removed' ? '-' : ' '}
-                                              {comment.lineContent}
-                                            </span>
+                                            <div className={`absolute left-0 top-0 bottom-0 w-1 ${
+                                              comment.lineType === 'added' ? 'bg-green-400' :
+                                              comment.lineType === 'removed' ? 'bg-red-400' :
+                                              'bg-gray-400'
+                                            }`}></div>
+                                            <div className="px-4 py-3 pl-6">
+                                              <div className="flex items-start gap-3">
+                                                <span className={`flex-shrink-0 w-6 h-6 rounded text-xs font-mono flex items-center justify-center ${
+                                                  comment.lineType === 'added' ? 'bg-green-200 text-green-800' :
+                                                  comment.lineType === 'removed' ? 'bg-red-200 text-red-800' :
+                                                  'bg-gray-200 text-gray-800'
+                                                }`}>
+                                                  {comment.lineType === 'added' ? '+' : comment.lineType === 'removed' ? '-' : '~'}
+                                                </span>
+                                                <code className={`flex-1 font-mono text-sm break-all select-all cursor-text ${
+                                                  comment.lineType === 'added' ? 'text-green-900' :
+                                                  comment.lineType === 'removed' ? 'text-red-900' :
+                                                  'text-gray-900'
+                                                }`}>
+                                                  {comment.lineContent}
+                                                </code>
+                                              </div>
+                                            </div>
                                           </div>
                                         </div>
                                       )}
