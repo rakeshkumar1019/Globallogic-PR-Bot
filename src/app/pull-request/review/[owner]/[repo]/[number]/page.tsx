@@ -346,7 +346,7 @@ Please configure your AI settings in the Settings page and try again.`,
     setEditingComments(prev => ({ ...prev, [commentId]: content }));
   };
 
-  const handleSubmitComments = async () => {
+    const handleSubmitComments = async () => {
     const approvedComments = reviewComments.filter(c => c.status === 'approved');
     if (approvedComments.length === 0) return;
 
@@ -359,95 +359,125 @@ Please configure your AI settings in the Settings page and try again.`,
       }
 
       // Separate general comments from file-specific comments
-      const generalComments = approvedComments.filter(c => !c.filePath || c.filePath === '');
+      const generalComments = approvedComments.filter(c => !c.filePath || c.filePath === '' || !c.startLine || c.startLine <= 0);
       const fileComments = approvedComments.filter(c => c.filePath && c.filePath !== '' && c.startLine && c.startLine > 0);
 
-      // Create review body for general comments
-      let reviewBody = '';
-      if (generalComments.length > 0) {
-        generalComments.forEach((comment, index) => {
-          reviewBody += `${comment.content}\n\n`;
-          if (index < generalComments.length - 1) {
-            reviewBody += '---\n\n';
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: string[] = [];
+
+      // Submit file-specific comments as a single PR review with line-specific comments
+      if (fileComments.length > 0) {
+        try {
+          const reviewComments = fileComments.map(comment => ({
+            path: comment.filePath!,
+            line: comment.startLine,
+            side: 'RIGHT', // Comments on the new version of the file
+            body: comment.content.trim()
+          }));
+
+          const reviewData = {
+            event: 'COMMENT',
+            comments: reviewComments
+          };
+
+          const response = await fetch(`https://api.github.com/repos/${params.owner}/${params.repo}/pulls/${params.number}/reviews`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.accessToken}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(reviewData)
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `Failed to submit line comments: ${response.status}`);
           }
+
+          successCount += fileComments.length;
+          
+          // Mark file-specific comments as submitted
+          setReviewComments(prev => 
+            prev.map(c => 
+              fileComments.find(fc => fc.id === c.id)
+                ? { ...c, status: 'submitted' as const, isSubmitted: true }
+                : c
+            )
+          );
+
+        } catch (error) {
+          console.error('Error submitting file comments:', error);
+          errorCount += fileComments.length;
+          errors.push(`Line comments: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      // Submit general comments individually using issues API
+      for (const comment of generalComments) {
+        try {
+          const response = await fetch(`https://api.github.com/repos/${params.owner}/${params.repo}/issues/${params.number}/comments`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.accessToken}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              body: comment.content.trim()
+            })
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `Failed to submit general comment: ${response.status}`);
+          }
+
+          successCount++;
+          
+          // Mark this specific comment as submitted
+          setReviewComments(prev => 
+            prev.map(c => 
+              c.id === comment.id 
+                ? { ...c, status: 'submitted' as const, isSubmitted: true }
+                : c
+            )
+          );
+
+          // Small delay between comments to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 300));
+
+        } catch (error) {
+          console.error(`Error submitting comment ${comment.id}:`, error);
+          errorCount++;
+          errors.push(`General comment: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      // Show appropriate success/error message
+      if (successCount > 0 && errorCount === 0) {
+        setSubmitMessage({
+          type: 'success',
+          text: `✅ Successfully submitted ${successCount} comment${successCount !== 1 ? 's' : ''} to GitHub!`
+        });
+      } else if (successCount > 0 && errorCount > 0) {
+        setSubmitMessage({
+          type: 'error',
+          text: `⚠️ Submitted ${successCount} comments, but ${errorCount} failed. ${errors.join('; ')}`
+        });
+      } else {
+        setSubmitMessage({
+          type: 'error',
+          text: `❌ Failed to submit comments. ${errors.join('; ')}`
         });
       }
-
-      // Create line-specific comments for GitHub API
-      const lineComments = fileComments.map(comment => {
-        // For line comments, we need to find the position in the diff
-        // GitHub API expects diff position, not line number
-        // For now, we'll create file-level comments without specific positions
-        return {
-          path: comment.filePath!,
-          body: `**Line ${comment.startLine}**: ${comment.content}`,
-          // Note: GitHub API requires diff position for line comments
-          // Without access to diff parsing, we'll submit as file comments
-        };
-      });
-
-      const reviewData: {
-        event: 'COMMENT';
-        body?: string;
-        comments?: Array<{
-          path: string;
-          body: string;
-        }>;
-      } = {
-        event: 'COMMENT'
-      };
-
-      // Add general review body if we have general comments
-      if (reviewBody.trim()) {
-        reviewData.body = reviewBody.trim();
-      }
-
-      // Add file-specific comments
-      if (lineComments.length > 0) {
-        reviewData.comments = lineComments;
-      }
-
-      // If no comments at all, add a default body
-      if (!reviewData.body && (!reviewData.comments || reviewData.comments.length === 0)) {
-        reviewData.body = 'AI Code Review completed.';
-      }
-
-
-      const response = await fetch(`https://api.github.com/repos/${params.owner}/${params.repo}/pulls/${params.number}/reviews`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.accessToken}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(reviewData)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to submit review: ${response.status}`);
-      }
-
-      // Mark submitted comments as completed
-      setReviewComments(prev => 
-        prev.map(comment => 
-          comment.status === 'approved' 
-            ? { ...comment, status: 'submitted' as const, isSubmitted: true }
-            : comment
-        )
-      );
-
-      // Show success message
-      setSubmitMessage({
-        type: 'success',
-        text: `✅ Successfully submitted ${approvedComments.length} comment${approvedComments.length !== 1 ? 's' : ''} to GitHub!`
-      });
       
-      // Clear success message after 5 seconds
-      setTimeout(() => setSubmitMessage(null), 5000);
+      // Clear message after 8 seconds
+      setTimeout(() => setSubmitMessage(null), 8000);
       
     } catch (error) {
-      console.error('Error submitting comments:', error);
+      console.error('Error in submit process:', error);
       setSubmitMessage({
         type: 'error',
         text: error instanceof Error ? error.message : 'Failed to submit comments. Please try again.'

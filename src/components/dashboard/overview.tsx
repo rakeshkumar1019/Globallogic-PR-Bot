@@ -531,8 +531,8 @@ export function Overview({ stats, selectedRepos, repositories, pullRequests, onT
               <div className="flex items-center gap-3">
                 <div className="h-8 w-8 bg-gray-900 border border-gray-900 rounded-lg flex items-center justify-center">
                   <Star className="h-4 w-4 text-white" />
-                </div>
-                <div>
+            </div>
+            <div>
                   <h2 className="text-lg font-semibold text-gray-900">Starred Repositories</h2>
                   <p className="text-sm text-gray-600">{selectedRepos.size} of {(repositories.length > 0 ? repositories : cachedRepos).length} repositories</p>
                 </div>
