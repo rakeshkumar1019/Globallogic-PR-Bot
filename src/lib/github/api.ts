@@ -16,6 +16,8 @@ export interface Repository {
   url: string;
   default_branch: string;
   updated_at?: string;
+  language?: string;
+  stargazers_count?: number;
 }
 
 export interface UserProfile {
@@ -286,7 +288,7 @@ export class GitHubClient {
       return result;
     } catch (err) {
       console.error('Error fetching pull requests:', err);
-      return {
+    return {
         pullRequests: [],
         totalCount: 0,
         hasNext: false,
