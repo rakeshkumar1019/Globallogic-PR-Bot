@@ -195,49 +195,88 @@ export default function PRDetailPage() {
     setError(null);
     
     try {
-      if (hasConfiguredSettings) {
-        const prData = {
-          title: pullRequest.title,
-          body: pullRequest.body || '',
-          files: fileChanges.map(file => ({
-            filename: file.filename,
-            patch: file.patch || ''
-          }))
-        };
+      const prData = {
+        title: pullRequest.title,
+        body: pullRequest.body || '',
+        files: fileChanges.map(file => ({
+          filename: file.filename,
+          patch: file.patch || ''
+        }))
+      };
 
-        const response = await fetch('/api/ai-review', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            user: session.user.email,
-            prData
-          })
-        });
+      const response = await fetch('/api/ai-review', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user: session.user.email,
+          prData
+        })
+      });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to generate AI review');
-        }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate AI review');
+      }
 
-        const result = await response.json();
+      const result = await response.json();
+      
+      if (result.comments && Array.isArray(result.comments)) {
+        const commentsWithIds = result.comments.map((comment: AIReviewComment, index: number) => ({
+          ...comment,
+          id: `ai-comment-${Date.now()}-${index}`,
+          status: 'pending' as const
+        }));
         
-        if (result.comments && Array.isArray(result.comments)) {
-          const commentsWithIds = result.comments.map((comment: AIReviewComment, index: number) => ({
-            ...comment,
-            id: `ai-comment-${Date.now()}-${index}`,
-            status: 'pending' as const
-          }));
-          
-          setReviewComments(commentsWithIds);
-        } else {
-          throw new Error('Invalid response format from AI review');
-        }
+        setReviewComments(commentsWithIds);
+      } else {
+        // No issues found or no comments returned
+        const noIssuesComment: AIReviewComment = {
+          id: `no-issues-${Date.now()}`,
+          content: `## ✅ No Issues Found
+
+The AI review did not identify any significant issues in the code changes. The changes appear to follow good practices and coding standards.
+
+**Files Analyzed:** ${fileChanges.length} files  
+**Provider:** ${result.provider || 'AI'}
+
+Great work! The code looks clean and well-structured.`,
+          filePath: '',
+          startLine: 0,
+          provider: result.provider || 'AI',
+          status: 'pending',
+          timestamp: new Date().toISOString()
+        };
+        setReviewComments([noIssuesComment]);
       }
     } catch (err) {
       console.error('Error generating AI review:', err);
-      setError(err instanceof Error ? err.message : 'Failed to generate AI review');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to generate AI review';
+      setError(errorMessage);
+      
+      // Show a helpful error comment
+      const errorComment: AIReviewComment = {
+        id: `error-${Date.now()}`,
+        content: `## ⚠️ AI Review Failed
+
+**Error:** ${errorMessage}
+
+### Possible Solutions:
+1. **Configure AI Provider**: Go to Settings and configure your preferred AI provider (OpenAI, Gemini, or Ollama)
+2. **Check API Keys**: Ensure your API keys are valid and have sufficient credits
+3. **Try Again**: Click "Generate Review" again
+4. **Check Network**: Verify your internet connection
+
+Please configure your AI settings in the Settings page and try again.`,
+        filePath: '',
+        startLine: 0,
+        provider: 'openai',
+        status: 'pending',
+        timestamp: new Date().toISOString()
+      };
+      
+      setReviewComments([errorComment]);
     } finally {
       setIsGenerating(false);
     }
