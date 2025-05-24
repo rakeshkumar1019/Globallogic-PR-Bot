@@ -1,180 +1,345 @@
-'use client';
+"use client"
 
+import { useState, useEffect } from "react"
 import { useRouter } from 'next/navigation';
 import { useSession, signIn } from 'next-auth/react';
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardDescription, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { motion, AnimatePresence } from "framer-motion"
+import { Bot, CheckCircle, Zap, Shield, Clock, ArrowRight, Github, MessageSquare, Eye } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
-export default function Home() {
+const steps = [
+  {
+    id: 1,
+    title: "AI Analyzes Your PR",
+    description: "Scans code changes for issues, patterns & improvements",
+    icon: Eye,
+    color: "from-blue-500 to-cyan-500",
+  },
+  {
+    id: 2,
+    title: "Generates Smart Comments",
+    description: "Context-aware suggestions with quick fixes",
+    icon: MessageSquare,
+    color: "from-purple-500 to-pink-500",
+    example: '"Consider using const instead of let here"',
+  },
+  {
+    id: 3,
+    title: "One-Click Publish",
+    description: "Review, approve & publish to GitHub instantly",
+    icon: CheckCircle,
+    color: "from-green-500 to-emerald-500",
+  },
+]
+
+export default function LandingPage() {
   const { status } = useSession();
   const router = useRouter();
-  
+  const [currentStep, setCurrentStep] = useState(0)
+  const [isAnimating, setIsAnimating] = useState(false)
+
   useEffect(() => {
     if (status === 'authenticated') {
       router.push('/dashboard');
     }
   }, [status, router]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsAnimating(true)
+      setTimeout(() => {
+        setCurrentStep((prev) => (prev + 1) % steps.length)
+        setIsAnimating(false)
+      }, 500)
+    }, 4000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const handleGitHubSignIn = () => {
+    signIn('github');
+  };
+
   return (
-    <div className="flex flex-col items-center min-h-screen">
-      <div className="max-w-5xl w-full text-center py-16 px-4 sm:px-6 lg:px-8">
-        {/* Hero Section */}
-        <div className="mx-auto max-w-3xl space-y-6 mb-16">
-          <div className="space-y-2">
-            <Badge variant="secondary" className="mb-2">AI-Powered Code Reviews</Badge>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight">
-              GlobalLogic PR Review Agent
-            </h1>
-            <p className="text-xl text-muted-foreground max-w-prose mx-auto">
-              Streamline your code reviews with AI-powered insights and suggestions.
-              Connect with GitHub to get started.
-            </p>
-          </div>
-          
-          <div className="flex justify-center">
+    <div className="min-h-screen bg-gray-950 text-white overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-950 to-black" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.1),transparent_50%)]" />
+
+      {/* Animated Grid */}
+      <div className="absolute inset-0 opacity-20">
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:50px_50px]" />
+      </div>
+
+      <div className="relative z-10 flex flex-col min-h-screen">
+        {/* Header */}
+        <header className="p-6 flex justify-between items-center">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center space-x-3"
+          >
+            <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+              <Bot className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="text-xl font-bold">PR.AI</div>
+              <div className="text-xs text-gray-400">by Velocity AI</div>
+            </div>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
             {status === 'loading' ? (
-              <div className="animate-pulse p-4 text-muted-foreground">Loading...</div>
+              <div className="animate-pulse">
+                <div className="h-10 w-36 bg-gray-700 rounded"></div>
+              </div>
             ) : status === 'authenticated' ? (
-              <Button size="lg" onClick={() => router.push('/dashboard')}>
+              <Button 
+                onClick={() => router.push('/dashboard')} 
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
+              >
                 Go to Dashboard
+                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
               <Button 
-                size="lg"
-                onClick={() => signIn('github')}
-                className="flex items-center gap-2"
+                onClick={handleGitHubSignIn}
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
               >
-                <svg viewBox="0 0 24 24" width="20" height="20" className="fill-current">
-                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                </svg>
-                Sign in with GitHub
+                <Github className="w-4 h-4 mr-2" />
+                Start with GitHub
               </Button>
             )}
+          </motion.div>
+        </header>
+
+        {/* Main Content */}
+        <main className="flex-1 flex items-center justify-center px-6">
+          <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left Side - Content */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              className="space-y-8"
+            >
+              <div className="space-y-6">
+                <h1 className="text-5xl lg:text-6xl font-bold leading-tight">
+                  <span className="bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">
+                    Ship Faster with
+                  </span>
+                  <br />
+                  <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-transparent">
+                    Smart Code Reviews
+                  </span>
+                </h1>
+
+                <p className="text-xl text-gray-300 leading-relaxed">
+                  Your second pair of eyes. Get context-aware comments on your PRs with quick fix suggestions. Just push
+                  one comment to publish.
+                </p>
+
+                {/* Key Features */}
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3 text-gray-300">
+                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                    <span>Quick fix suggestions with 95% accuracy</span>
+                  </div>
+                  <div className="flex items-center space-x-3 text-gray-300">
+                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                    <span>Context-aware comments that understand your code</span>
+                  </div>
+                  <div className="flex items-center space-x-3 text-gray-300">
+                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                    <span>One-click publishing to GitHub PRs</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4">
+                {status === 'loading' ? (
+                  <div className="animate-pulse">
+                    <div className="h-12 w-44 bg-gray-700 rounded"></div>
+                  </div>
+                ) : status === 'authenticated' ? (
+                  <Button
+                    size="lg"
+                    onClick={() => router.push('/dashboard')}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
+                  >
+                    <ArrowRight className="w-5 h-5 mr-2" />
+                    Go to Dashboard
+                  </Button>
+                ) : (
+                  <Button
+                    size="lg"
+                    onClick={handleGitHubSignIn}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
+                  >
+                    <Github className="w-5 h-5 mr-2" />
+                    Start with GitHub
+                  </Button>
+                )}
+              </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-6 pt-8">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-400">2x</div>
+                  <div className="text-sm text-gray-400">Faster</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-pink-400">95%</div>
+                  <div className="text-sm text-gray-400">Accurate</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-orange-400">1-Click</div>
+                  <div className="text-sm text-gray-400">Publish</div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Right Side - Animated Process */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              className="relative"
+            >
+              <div className="relative w-full max-w-md mx-auto">
+                {/* Central Hub */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+                  <motion.div
+                    animate={{
+                      scale: isAnimating ? 1.1 : 1,
+                      rotate: currentStep * 120,
+                    }}
+                    transition={{ duration: 0.5 }}
+                    className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-2xl"
+                  >
+                    <Bot className="w-10 h-10 text-white" />
+                  </motion.div>
+                </div>
+
+                {/* Process Steps */}
+                {steps.map((step, index) => {
+                  const angle = index * 120 - 90 // 120 degrees apart, start from top
+                  const radius = 120
+                  const x = Math.cos((angle * Math.PI) / 180) * radius
+                  const y = Math.sin((angle * Math.PI) / 180) * radius
+
+                  return (
+                    <motion.div
+                      key={step.id}
+                      className="absolute top-1/2 left-1/2"
+                      style={{
+                        transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
+                      }}
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={{
+                        opacity: 1,
+                        scale: currentStep === index ? 1.2 : 1,
+                      }}
+                      transition={{ delay: index * 0.2 }}
+                    >
+                      <div
+                        className={`relative p-4 rounded-xl bg-gradient-to-r ${step.color} ${
+                          currentStep === index ? "shadow-2xl" : "opacity-60"
+                        }`}
+                      >
+                        <step.icon className="w-8 h-8 text-white" />
+
+                        {/* Connecting Line */}
+                        <motion.div
+                          className="absolute top-1/2 left-1/2 w-20 h-0.5 bg-gradient-to-r from-white/50 to-transparent origin-left"
+                          style={{
+                            transform: `translate(-50%, -50%) rotate(${angle + 180}deg)`,
+                          }}
+                          initial={{ scaleX: 0 }}
+                          animate={{
+                            scaleX: currentStep >= index ? 1 : 0.3,
+                            opacity: currentStep >= index ? 1 : 0.3,
+                          }}
+                          transition={{ duration: 0.5 }}
+                        />
+                      </div>
+
+                      {/* Step Info */}
+                      <AnimatePresence>
+                        {currentStep === index && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="absolute top-full mt-4 left-1/2 transform -translate-x-1/2 text-center min-w-max"
+                          >
+                            <div className="bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 border border-gray-700 max-w-xs">
+                              <div className="font-semibold text-sm mb-1">{step.title}</div>
+                              <div className="text-xs text-gray-400 mb-2">{step.description}</div>
+                              {step.example && (
+                                <div className="text-xs text-purple-300 italic bg-gray-900/50 rounded px-2 py-1">
+                                  {step.example}
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  )
+                })}
+
+                {/* Pulse Effect */}
+                <motion.div
+                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+                  animate={{
+                    scale: [1, 1.5, 1],
+                    opacity: [0.5, 0, 0.5],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Number.POSITIVE_INFINITY,
+                    ease: "easeInOut",
+                  }}
+                >
+                  <div className="w-40 h-40 border border-purple-500/30 rounded-full" />
+                </motion.div>
+              </div>
+            </motion.div>
           </div>
-        </div>
-        
-        {/* Features Section */}
-        <div className="space-y-8">
-          <h2 className="text-3xl font-bold">Key Features</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card>
-              <CardHeader>
-                <div className="rounded-full bg-primary/10 p-2.5 w-10 h-10 mb-2.5 flex items-center justify-center">
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    width="20" 
-                    height="20" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="2" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    className="text-primary"
-                  >
-                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
-                    <path d="M12 9v4"/>
-                    <path d="M12 17h.01"/>
-                  </svg>
-                </div>
-                <CardTitle>Smart PR Reviews</CardTitle>
-                <CardDescription>
-                  Get instant feedback on your pull requests with AI-powered analysis
-                </CardDescription>
-              </CardHeader>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <div className="rounded-full bg-primary/10 p-2.5 w-10 h-10 mb-2.5 flex items-center justify-center">
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    width="20" 
-                    height="20" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="2" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    className="text-primary"
-                  >
-                    <path d="M12 2H2v10h10V2ZM22 2h-8v8h8V2ZM12 14H2v8h10v-8ZM22 14h-8v8h8v-8Z"/>
-                  </svg>
-                </div>
-                <CardTitle>Code Quality</CardTitle>
-                <CardDescription>
-                  Improve your code quality with suggestions for best practices and potential bugs
-                </CardDescription>
-              </CardHeader>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <div className="rounded-full bg-primary/10 p-2.5 w-10 h-10 mb-2.5 flex items-center justify-center">
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    width="20" 
-                    height="20" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="2" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    className="text-primary"
-                  >
-                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                    <line x1="12" x2="12" y1="19" y2="22"/>
-                  </svg>
-                </div>
-                <CardTitle>Customizable</CardTitle>
-                <CardDescription>
-                  Choose from multiple LLM providers to power your code reviews
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </div>
-          
-          <div className="py-12">
-            <div className="relative mx-auto max-w-2xl">
-              <Tabs defaultValue="openai" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 mb-8">
-                  <TabsTrigger value="openai">OpenAI</TabsTrigger>
-                  <TabsTrigger value="gemini">Google Gemini</TabsTrigger>
-                  <TabsTrigger value="ollama">Ollama</TabsTrigger>
-                </TabsList>
-                <TabsContent value="openai" className="p-4 border rounded-lg bg-card text-left">
-                  <code className="text-sm text-muted-foreground">
-                    <div className="font-semibold">Using OpenAI for PR reviews</div>
-                    <div>{`const reviewer = new PRReviewer('openai');`}</div>
-                    <div>{`await reviewer.analyze(pullRequest);`}</div>
-                  </code>
-                </TabsContent>
-                <TabsContent value="gemini" className="p-4 border rounded-lg bg-card text-left">
-                  <code className="text-sm text-muted-foreground">
-                    <div className="font-semibold">Using Google Gemini for PR reviews</div>
-                    <div>{`const reviewer = new PRReviewer('gemini');`}</div>
-                    <div>{`await reviewer.analyze(pullRequest);`}</div>
-                  </code>
-                </TabsContent>
-                <TabsContent value="ollama" className="p-4 border rounded-lg bg-card text-left">
-                  <code className="text-sm text-muted-foreground">
-                    <div className="font-semibold">Using Ollama for PR reviews</div>
-                    <div>{`const reviewer = new PRReviewer('ollama');`}</div>
-                    <div>{`await reviewer.analyze(pullRequest);`}</div>
-                  </code>
-                </TabsContent>
-              </Tabs>
+        </main>
+
+        {/* Trust Bar */}
+        <motion.footer
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1 }}
+          className="p-6 border-t border-gray-800"
+        >
+          <div className="max-w-6xl mx-auto text-center">
+            <div className="text-sm text-gray-400 mb-4">Trusted by developers at top companies</div>
+            <div className="flex flex-wrap justify-center gap-8 text-sm text-gray-500">
+              <div className="flex items-center space-x-2">
+                <Shield className="w-4 h-4 text-green-400" />
+                <span>Enterprise Security</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Clock className="w-4 h-4 text-blue-400" />
+                <span>Real-time Analysis</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Zap className="w-4 h-4 text-yellow-400" />
+                <span>Lightning Fast</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-4 h-4 text-purple-400" />
+                <span>95% Accuracy</span>
+              </div>
             </div>
           </div>
-        </div>
+        </motion.footer>
       </div>
     </div>
-  );
+  )
 }
+

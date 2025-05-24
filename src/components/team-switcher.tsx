@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 
 import {
   SidebarMenu,
@@ -17,17 +18,26 @@ export function TeamSwitcher({
     plan: string
   }[]
 }) {
+  const router = useRouter()
   const activeTeam = teams[0]
 
   if (!activeTeam) {
     return null
   }
 
+  const handleLogoClick = () => {
+    router.push('/')
+  }
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <SidebarMenuButton size="lg" className="cursor-default hover:bg-transparent">
-          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gray-900 text-white">
+        <SidebarMenuButton 
+          size="lg" 
+          className="cursor-pointer hover:bg-gray-50 transition-colors"
+          onClick={handleLogoClick}
+        >
+          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-black text-white">
             <activeTeam.logo className="size-4" />
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight">
