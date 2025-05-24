@@ -11,8 +11,26 @@ const fontSans = FontSans({
 })
 
 export const metadata: Metadata = {
-  title: 'PR.AI - Intelligent PR Assistant',
-  description: 'AI-powered pull request review and analysis platform',
+  title: 'PR.AI - Ship Faster with Smart Code Reviews',
+  description: 'Your second pair of eyes. Get context-aware comments on your PRs with quick fix suggestions. Just push one comment to publish.',
+  icons: {
+    icon: [
+      {
+        url: '/icon.svg',
+        type: 'image/svg+xml',
+        sizes: '32x32',
+      },
+    ],
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
+    other: [
+      {
+        rel: 'icon',
+        url: '/icon.svg',
+        type: 'image/svg+xml',
+      },
+    ],
+  },
 }
 
 export default function RootLayout({

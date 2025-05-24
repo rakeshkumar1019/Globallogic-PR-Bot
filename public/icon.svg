@@ -1,0 +1,35 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B5CF6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#EC4899;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background rounded rectangle -->
+  <rect width="32" height="32" rx="7" fill="url(#gradient)" />
+  
+  <!-- Bot icon (centered and properly scaled) -->
+  <g transform="translate(6, 6)" fill="none" stroke="white" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Antenna -->
+    <circle cx="10" cy="2" r="1" fill="white" stroke="none" />
+    <line x1="10" y1="3" x2="10" y2="5" />
+    
+    <!-- Head -->
+    <rect x="3" y="5" width="14" height="10" rx="2" fill="white" stroke="none" />
+    
+    <!-- Body -->
+    <rect x="6" y="15" width="8" height="6" rx="1" fill="white" stroke="none" />
+    
+    <!-- Eyes -->
+    <circle cx="7.5" cy="9" r="1.2" fill="url(#gradient)" stroke="none" />
+    <circle cx="12.5" cy="9" r="1.2" fill="url(#gradient)" stroke="none" />
+    
+    <!-- Mouth -->
+    <path d="M8 12h4" stroke="url(#gradient)" stroke-width="1" />
+    
+    <!-- Arms -->
+    <rect x="1" y="8" width="2" height="4" rx="1" fill="white" stroke="none" />
+    <rect x="17" y="8" width="2" height="4" rx="1" fill="white" stroke="none" />
+  </g>
+</svg> 
