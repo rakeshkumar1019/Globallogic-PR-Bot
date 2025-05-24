@@ -26,10 +26,10 @@ const DEFAULT_SETTINGS: LLMSettings = {
 
 export async function getSettings(user: string): Promise<LLMSettings> {
   try {
-    const res = await fetch(`/api/settings?user=${encodeURIComponent(user)}`, { cache: 'no-store' });
+    const res = await fetch(`/api/settings?user=${encodeURICompouser)}`, { cach 'no-store' });
     if (!res.ok) throw new Error('Failed to fetch');
     const data = await res.json();
-    if (!data) return DEFAULT_SETTINGS;
+    if (!data) return DEFAULT_SETTING
     return data;
   } catch {
     return DEFAULT_SETTINGS;
