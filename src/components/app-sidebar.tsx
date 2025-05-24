@@ -49,7 +49,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
     {
       title: "Pull Requests",
-      url: "/prs",
+              url: "/pull-request",
       icon: GitPullRequest,
     },
     {

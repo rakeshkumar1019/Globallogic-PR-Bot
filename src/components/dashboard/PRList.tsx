@@ -45,7 +45,7 @@ export function PRList({
   const handlePRClick = (pr: PullRequest) => {
     const [owner, repo] = pr.base?.repo?.full_name?.split('/') || ['', ''];
     if (owner && repo) {
-      router.push(`/dashboard/pr/${owner}/${repo}/${pr.number}`);
+      router.push(`/pull-request/review/${owner}/${repo}/${pr.number}`);
     }
   };
 

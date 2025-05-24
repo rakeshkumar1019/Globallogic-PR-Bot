@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
@@ -48,20 +48,7 @@ export default function PRDetailPage() {
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
   const [editingComments, setEditingComments] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    if (session?.accessToken && params.owner && params.repo && params.number) {
-      loadPullRequest();
-      checkUserSettings();
-    }
-  }, [session, params]);
-
-  useEffect(() => {
-    if (pullRequest && session?.accessToken) {
-      loadFileChanges();
-    }
-  }, [pullRequest, session]);
-
-  const checkUserSettings = async () => {
+  const checkUserSettings = useCallback(async () => {
     if (!session?.user?.email) return;
     
     try {
@@ -81,9 +68,9 @@ export default function PRDetailPage() {
       console.error('Error checking settings:', error);
       setHasConfiguredSettings(false);
     }
-  };
+  }, [session?.user?.email]);
 
-  const loadPullRequest = async () => {
+  const loadPullRequest = useCallback(async () => {
     if (!session?.accessToken) return;
 
     const cacheKey = `pr_details:${params.owner}:${params.repo}:${params.number}:${session.accessToken.slice(-8)}`;
@@ -128,9 +115,9 @@ export default function PRDetailPage() {
     } finally {
       setIsLoadingPR(false);
     }
-  };
+  }, [session?.accessToken, params.owner, params.repo, params.number]);
 
-  const loadFileChanges = async () => {
+  const loadFileChanges = useCallback(async () => {
     if (!session?.accessToken || !pullRequest) return;
 
     const cacheKey = `pr_files:${params.owner}:${params.repo}:${params.number}:${session.accessToken.slice(-8)}`;
@@ -164,7 +151,20 @@ export default function PRDetailPage() {
     } finally {
       setIsLoadingChanges(false);
     }
-  };
+  }, [session?.accessToken, pullRequest, params.owner, params.repo, params.number]);
+
+  useEffect(() => {
+    if (session?.accessToken && params.owner && params.repo && params.number) {
+      loadPullRequest();
+      checkUserSettings();
+    }
+  }, [session, params, loadPullRequest, checkUserSettings]);
+
+  useEffect(() => {
+    if (pullRequest && session?.accessToken) {
+      loadFileChanges();
+    }
+  }, [pullRequest, session, loadFileChanges]);
 
   const handleGenerateReview = async () => {
     if (!pullRequest || !session?.user?.email) return;
@@ -463,7 +463,7 @@ Please configure your AI settings and try again.`,
     <SidebarLayout 
       breadcrumbs={[
         { label: "Dashboard", href: "/dashboard" },
-        { label: "Pull Request", href: `/dashboard/pr/${params.owner}/${params.repo}/${params.number}` },
+        { label: "Pull Request", href: `/pull-request/review/${params.owner}/${params.repo}/${params.number}` },
         { label: `#${pullRequest.number}` }
       ]}
     >

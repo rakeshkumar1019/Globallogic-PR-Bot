@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { GitHubClient, Repository } from '@/lib/github/api';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,7 +16,7 @@ export default function TestRepos() {
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const loadRepositories = async () => {
+  const loadRepositories = useCallback(async () => {
     if (!session?.accessToken) return;
     
     setLoading(true);
@@ -30,13 +30,13 @@ export default function TestRepos() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [session?.accessToken]);
 
   useEffect(() => {
     if (session?.accessToken) {
       loadRepositories();
     }
-  }, [session]);
+  }, [session, loadRepositories]);
 
   const toggleRepo = (repoFullName: string) => {
     setSelectedRepos(prev => {

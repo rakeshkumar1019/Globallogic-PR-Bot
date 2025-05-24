@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -81,7 +82,7 @@ export function PullRequests({
   const handlePRClick = (pr: PullRequest) => {
     const [owner, repo] = pr.base?.repo?.full_name?.split('/') || ['', ''];
     if (owner && repo) {
-      router.push(`/dashboard/pr/${owner}/${repo}/${pr.number}`);
+      router.push(`/pull-request/review/${owner}/${repo}/${pr.number}`);
     }
   };
 
@@ -200,10 +201,12 @@ export function PullRequests({
                       <span className="truncate">{pr.base?.repo?.full_name}</span>
                       <span>•</span>
                       <div className="flex items-center gap-1">
-                        <img 
+                        <Image 
                           src={pr.user.avatar_url} 
                           alt={pr.user.login}
-                          className="h-4 w-4 rounded-full"
+                          width={16}
+                          height={16}
+                          className="rounded-full"
                         />
                         <span>{pr.user.login}</span>
                       </div>
