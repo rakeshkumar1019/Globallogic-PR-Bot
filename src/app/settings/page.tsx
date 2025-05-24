@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Brain, Check, AlertCircle, Settings as SettingsIcon, Shield, Zap } from 'lucide-react';
+import { SidebarLayout } from '@/components/layout/sidebar-layout';
+import { Brain, Check, AlertCircle, Settings as SettingsIcon, Shield, Zap } from 'lucide-react';
 
 interface LLMSettings {
   selectedProvider?: 'openai' | 'gemini' | 'ollama';
@@ -102,59 +103,63 @@ export default function Settings() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="w-full px-8 py-6">
-          <div className="space-y-6">
-            <Skeleton className="h-12 w-96" />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map(i => (
-                <Skeleton key={i} className="h-[400px] w-full" />
-              ))}
-            </div>
+      <SidebarLayout 
+        breadcrumbs={[
+          { label: "Settings", href: "/settings" },
+          { label: "AI Configuration" }
+        ]}
+      >
+        <div className="space-y-6">
+          <Skeleton className="h-12 w-96" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map(i => (
+              <Skeleton key={i} className="h-[400px] w-full" />
+            ))}
           </div>
         </div>
-      </div>
+      </SidebarLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="w-full">
-        {/* Header */}
-        <div className="border-b border-gray-200 bg-white px-8 py-6">
-          <div className="flex items-center gap-6 mb-6">
-            <Button variant="ghost" size="icon" onClick={() => router.back()} className="hover:bg-gray-100">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex-1">
-              <div className="flex items-center gap-4 mb-3">
-                <SettingsIcon className="h-8 w-8 text-purple-600" />
-                <h1 className="text-4xl font-bold text-gray-900">AI Settings</h1>
-              </div>
-              <p className="text-lg text-gray-600">
-                Configure your AI providers for intelligent code reviews and automated assistance
-              </p>
+    <SidebarLayout 
+      breadcrumbs={[
+        { label: "Settings", href: "/settings" },
+        { label: "AI Configuration" }
+      ]}
+    >
+      {/* Header */}
+      <div className="border-b border-gray-200 bg-white px-4 py-6 -mx-4 -mt-4 mb-6">
+        <div className="flex items-center gap-6">
+          <div className="flex-1">
+            <div className="flex items-center gap-4 mb-3">
+              <SettingsIcon className="h-8 w-8 text-purple-600" />
+              <h1 className="text-4xl font-bold text-gray-900">AI Settings</h1>
             </div>
-            <Button 
-              onClick={handleSaveSettings} 
-              disabled={saving}
-              size="lg"
-              className="bg-purple-600 hover:bg-purple-700 px-8"
-            >
-              {saving ? (
-                <div className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                  Saving...
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Check className="h-4 w-4" />
-                  Save Configuration
-                </div>
-              )}
-            </Button>
+            <p className="text-lg text-gray-600">
+              Configure your AI providers for intelligent code reviews and automated assistance
+            </p>
           </div>
+          <Button 
+            onClick={handleSaveSettings} 
+            disabled={saving}
+            size="lg"
+            className="bg-purple-600 hover:bg-purple-700 px-8"
+          >
+            {saving ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                Saving...
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Check className="h-4 w-4" />
+                Save Configuration
+              </div>
+            )}
+          </Button>
         </div>
+      </div>
 
         {saveMessage && (
           <div className="mx-8 mt-6">
@@ -390,7 +395,6 @@ export default function Settings() {
             </CardContent>
           </Card>
         </div>
-      </div>
-    </div>
+    </SidebarLayout>
   );
 } 

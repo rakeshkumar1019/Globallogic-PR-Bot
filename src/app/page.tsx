@@ -19,8 +19,8 @@ export default function Home() {
   }, [status, router]);
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="max-w-5xl w-full text-center py-16">
+    <div className="flex flex-col items-center min-h-screen">
+      <div className="max-w-5xl w-full text-center py-16 px-4 sm:px-6 lg:px-8">
         {/* Hero Section */}
         <div className="mx-auto max-w-3xl space-y-6 mb-16">
           <div className="space-y-2">
