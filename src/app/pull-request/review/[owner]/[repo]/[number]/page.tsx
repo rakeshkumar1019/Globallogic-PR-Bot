@@ -10,7 +10,7 @@ import { AIReviewComment } from '@/lib/types';
 import { apiCache, CACHE_TTL } from '@/lib/cache';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -20,7 +20,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SidebarLayout } from '@/components/layout/sidebar-layout';
 import { 
   GitBranch, Clock, FileText, Plus, Minus, Brain, Check, X, Send, 
-  AlertCircle, Settings, ChevronDown, ChevronRight, Eye, Code, Edit3, Save, RotateCcw, CheckCheck 
+  AlertCircle, ChevronDown, ChevronRight, Eye, Code, Edit3, Save, RotateCcw, CheckCheck 
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -35,13 +35,11 @@ interface FileChange {
 
 export default function PRDetailPage() {
   const { data: session } = useSession();
-  const router = useRouter();
   const params = useParams();
   
   const [pullRequest, setPullRequest] = useState<PullRequest | null>(null);
   const [reviewComments, setReviewComments] = useState<AIReviewComment[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<'openai' | 'gemini' | 'ollama'>('openai');
   const [hasConfiguredSettings, setHasConfiguredSettings] = useState<boolean | null>(null);
   const [fileChanges, setFileChanges] = useState<FileChange[]>([]);
   const [isLoadingChanges, setIsLoadingChanges] = useState(true);
@@ -321,22 +319,40 @@ export default function PRDetailPage() {
         throw new Error('No access token available');
       }
 
-      // Submit each comment individually to GitHub API
-      const commentsToSubmit = approvedComments
-        .map(comment => ({
-          path: comment.filePath || '',
-          position: comment.startLine || undefined,
-          body: comment.content
-        }))
-        .filter(comment => comment.path); // Only include comments with file paths
+      // Create a comprehensive review body with all approved comments
+      let reviewBody = '## AI Code Review\n\n';
+      
+      // Group comments by file
+      const commentsByFile = approvedComments.reduce((acc, comment) => {
+        const key = comment.filePath || 'General Comments';
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(comment);
+        return acc;
+      }, {} as Record<string, typeof approvedComments>);
 
-      if (commentsToSubmit.length === 0) {
-        throw new Error('No valid comments with file paths to submit');
-      }
+      // Format comments in the review body
+      Object.entries(commentsByFile).forEach(([filePath, comments]) => {
+        if (filePath !== 'General Comments') {
+          reviewBody += `### 📁 \`${filePath}\`\n\n`;
+        } else {
+          reviewBody += `### 📝 General Comments\n\n`;
+        }
+        
+        comments.forEach((comment, index) => {
+          if (comment.startLine && comment.startLine > 0) {
+            reviewBody += `**Line ${comment.startLine}:**\n\n`;
+          }
+          reviewBody += `${comment.content}\n\n`;
+          if (index < comments.length - 1) {
+            reviewBody += '---\n\n';
+          }
+        });
+        reviewBody += '\n';
+      });
 
       const reviewData = {
         event: 'COMMENT' as const,
-        comments: commentsToSubmit
+        body: reviewBody
       };
 
       const response = await fetch(`https://api.github.com/repos/${params.owner}/${params.repo}/pulls/${params.number}/reviews`, {
@@ -593,48 +609,21 @@ export default function PRDetailPage() {
                     <Brain className="h-5 w-5 text-purple-600" />
                     AI Code Review
                   </CardTitle>
-                  <div className="flex items-center gap-3">
-                    {hasConfiguredSettings ? (
-                      <div className="text-xs text-gray-600">
-                        Using configured provider
+                                  <div className="flex items-center gap-3">
+                  <Button onClick={handleGenerateReview} disabled={isGenerating} size="sm" className="bg-purple-600 hover:bg-purple-700 text-xs">
+                    {isGenerating ? (
+                      <div className="flex items-center gap-1">
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                        Generating...
                       </div>
                     ) : (
-                      <>
-                        <Select value={selectedProvider} onValueChange={(value) => setSelectedProvider(value as 'openai' | 'gemini' | 'ollama')}>
-                          <SelectTrigger className="w-[180px] h-8 text-xs">
-                            <SelectValue placeholder="Select Provider" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="openai">🤖 OpenAI</SelectItem>
-                            <SelectItem value="gemini">✨ Gemini</SelectItem>
-                            <SelectItem value="ollama">🦙 Ollama</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => router.push('/settings')}
-                          className="text-xs"
-                        >
-                          <Settings className="h-3 w-3 mr-1" />
-                          Configure
-                        </Button>
-                      </>
+                      <div className="flex items-center gap-1">
+                        <Brain className="h-3 w-3" />
+                        Generate Review
+                      </div>
                     )}
-                    <Button onClick={handleGenerateReview} disabled={isGenerating} size="sm" className="bg-purple-600 hover:bg-purple-700 text-xs">
-                      {isGenerating ? (
-                        <div className="flex items-center gap-1">
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                          Generating...
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1">
-                          <Brain className="h-3 w-3" />
-                          Generate Review
-                        </div>
-                      )}
-                    </Button>
-                  </div>
+                  </Button>
+                </div>
                 </div>
               </CardHeader>
               <CardContent className="p-4">
