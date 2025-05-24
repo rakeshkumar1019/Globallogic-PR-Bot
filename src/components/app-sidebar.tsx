@@ -35,7 +35,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     {
       name: "PR.AI",
       logo: GitPullRequest,
-      plan: "Intelligent PR Assistant",
+      plan: "by Velocity AI",
     },
   ]
 
