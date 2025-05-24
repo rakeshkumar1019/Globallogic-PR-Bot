@@ -6,6 +6,7 @@ import { GitHubClient, Repository } from '@/lib/github/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { SidebarLayout } from '@/components/layout/sidebar-layout';
 import { Star } from 'lucide-react';
 
 export default function TestRepos() {
@@ -50,7 +51,12 @@ export default function TestRepos() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <SidebarLayout 
+      breadcrumbs={[
+        { label: "Test Repositories", href: "/test-repos" },
+        { label: "Repository Selection" }
+      ]}
+    >
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold mb-6">Repository Selection Test</h1>
         
@@ -148,6 +154,6 @@ export default function TestRepos() {
           </DialogContent>
         </Dialog>
       </div>
-    </div>
+    </SidebarLayout>
   );
 } 

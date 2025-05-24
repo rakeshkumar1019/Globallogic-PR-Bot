@@ -15,8 +15,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
+import { SidebarLayout } from '@/components/layout/sidebar-layout';
 import { 
-  ArrowLeft, GitBranch, Clock, FileText, Plus, Minus, Brain, Check, X, Send, 
+  GitBranch, Clock, FileText, Plus, Minus, Brain, Check, X, Send, 
   AlertCircle, Settings, ChevronDown, ChevronRight, Eye, Code, Edit3, Save, RotateCcw 
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -434,36 +435,42 @@ Please configure your AI settings and try again.`,
 
   if (error || !pullRequest) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="w-full p-4">
-          <div className="flex items-center justify-center min-h-[300px]">
-            <Card className="max-w-md w-full border-red-200">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-3 text-red-600">
-                  <AlertCircle className="h-5 w-5" />
-                  <div>
-                    <h3 className="font-semibold">Error</h3>
-                    <p className="text-sm text-gray-600">{error || 'Pull request not found'}</p>
-                  </div>
+      <SidebarLayout 
+        breadcrumbs={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Pull Request" },
+          { label: "Error" }
+        ]}
+      >
+        <div className="flex items-center justify-center min-h-[300px]">
+          <Card className="max-w-md w-full border-red-200">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3 text-red-600">
+                <AlertCircle className="h-5 w-5" />
+                <div>
+                  <h3 className="font-semibold">Error</h3>
+                  <p className="text-sm text-gray-600">{error || 'Pull request not found'}</p>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      </SidebarLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="w-full">
-        {/* Compact Header */}
-        <div className="border-b border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-4 mb-3">
-            <Button variant="ghost" size="sm" onClick={() => router.back()} className="hover:bg-gray-100">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="flex-1 min-w-0">
+    <SidebarLayout 
+      breadcrumbs={[
+        { label: "Dashboard", href: "/dashboard" },
+        { label: "Pull Request", href: `/dashboard/pr/${params.owner}/${params.repo}/${params.number}` },
+        { label: `#${pullRequest.number}` }
+      ]}
+    >
+      {/* Compact Header */}
+      <div className="border-b border-gray-200 bg-white px-4 py-6 -mx-4 -mt-4 mb-6">
+        <div className="flex items-center gap-4 mb-3">
+          <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-xl font-bold text-gray-900 truncate">
                   {pullRequest.title}
@@ -520,7 +527,7 @@ Please configure your AI settings and try again.`,
         )}
 
         {/* Compact Main Content */}
-        <div className="p-4 space-y-4">
+        <div className="space-y-4">
           {/* Files Section */}
           <Card className="border border-gray-200">
             <CardHeader className="border-b border-gray-200 bg-gray-50 p-3">
@@ -822,7 +829,6 @@ Please configure your AI settings and try again.`,
             </CardContent>
           </Card>
         </div>
-      </div>
-    </div>
+    </SidebarLayout>
   );
 } 

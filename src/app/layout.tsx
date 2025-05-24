@@ -2,8 +2,6 @@ import './globals.css'
 import type { Metadata } from 'next'
 import { Inter as FontSans } from 'next/font/google'
 import { NextAuthProvider } from '@/lib/auth/provider'
-import { Header } from '@/components/layout/header'
-import { Footer } from '@/components/layout/footer'
 import { cn } from '@/lib/utils'
 import { Toaster } from '@/components/ui/toaster'
 
@@ -13,8 +11,8 @@ const fontSans = FontSans({
 })
 
 export const metadata: Metadata = {
-  title: 'GlobalLogic PR Review Agent',
-  description: 'AI-powered PR review and analysis',
+  title: 'PR.AI - Intelligent PR Assistant',
+  description: 'AI-powered pull request review and analysis platform',
 }
 
 export default function RootLayout({
@@ -30,13 +28,9 @@ export default function RootLayout({
       )}>
         <NextAuthProvider>
           <div className="relative flex min-h-screen flex-col">
-            {/* <Header /> */}
             <main className="flex-1">
-              <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-                {children}
-              </div>
+              {children}
             </main>
-            {/* <Footer /> */}
           </div>
           <Toaster />
         </NextAuthProvider>
