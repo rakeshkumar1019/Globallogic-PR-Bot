@@ -45,8 +45,8 @@ const Header = memo(({ status, router, onSignIn }: {
         <Bot className="w-6 h-6" />
       </div>
       <div>
-        <div className="text-xl font-bold">PR.AI</div>
-        <div className="text-xs text-gray-400">by Velocity AI</div>
+        <div className="text-xl font-bold">prview.ai</div>
+        <div className="text-xs text-gray-400">Smart Code Reviews</div>
       </div>
     </div>
 

@@ -32,9 +32,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // Teams/Organizations - for PR review context
   const teams = [
     {
-      name: "PR.AI",
+      name: "prview.ai",
       logo: Bot,
-      plan: "by Velocity AI",
+      plan: "Smart Code Reviews",
     },
   ]
 

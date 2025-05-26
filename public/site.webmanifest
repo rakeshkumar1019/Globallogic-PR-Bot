@@ -1,6 +1,6 @@
 {
-  "name": "PR.AI - Smart Code Reviews",
-  "short_name": "PR.AI",
+  "name": "prview.ai - Smart Code Reviews",
+  "short_name": "prview.ai",
   "description": "Get context-aware comments on your PRs with quick fix suggestions",
   "icons": [
     {

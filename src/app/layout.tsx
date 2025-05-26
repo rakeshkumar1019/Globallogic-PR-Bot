@@ -13,10 +13,10 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'PR.AI - Smart Code Reviews',
+  title: 'prview.ai - Smart Code Reviews',
   description: 'Get context-aware comments on your PRs with quick fix suggestions. Ship faster with AI-powered code reviews.',
   keywords: 'AI, code review, GitHub, pull requests, automation, development tools',
-  authors: [{ name: 'Velocity AI' }],
+  authors: [{ name: 'Smart Code Reviews' }],
   robots: 'index, follow',
   icons: {
     icon: [
@@ -30,14 +30,14 @@ export const metadata: Metadata = {
     ],
   },
   openGraph: {
-    title: 'PR.AI - Smart Code Reviews',
+    title: 'prview.ai - Smart Code Reviews',
     description: 'Get context-aware comments on your PRs with quick fix suggestions.',
     type: 'website',
     locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'PR.AI - Smart Code Reviews',
+    title: 'prview.ai - Smart Code Reviews',
     description: 'Get context-aware comments on your PRs with quick fix suggestions.',
   },
 }
