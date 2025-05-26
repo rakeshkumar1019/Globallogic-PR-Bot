@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import { GitHubClient, Repository, PullRequest, UserProfile } from '../github/api'
+import { createCacheManager } from './cache-utils'
 
 // Query keys for consistent caching
 export const queryKeys = {
@@ -117,8 +118,8 @@ export function usePullRequests(selectedRepos: Set<string>, repositories: Reposi
       )
     },
     enabled: !!session?.accessToken && selectedRepos.size > 0 && repositories.length > 0,
-    staleTime: 15 * 60 * 1000, // 15 minutes - longer cache for stability
-    gcTime: 60 * 60 * 1000, // 1 hour
+    staleTime: 5 * 60 * 1000, // 5 minutes - more responsive for new repos
+    gcTime: 30 * 60 * 1000, // 30 minutes
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -347,11 +348,13 @@ export function useStarredReposPullRequests() {
 export function useToggleRepo() {
   const queryClient = useQueryClient()
   const saveStarredRepos = useSaveStarredRepos()
+  const cacheManager = createCacheManager(queryClient)
 
   return {
     toggleRepo: async (repoFullName: string) => {
       const currentStarredRepos = queryClient.getQueryData<Set<string>>(queryKeys.starredRepos) || new Set()
       const newStarredRepos = new Set(currentStarredRepos)
+      const isAdding = !newStarredRepos.has(repoFullName)
       
       if (newStarredRepos.has(repoFullName)) {
         newStarredRepos.delete(repoFullName)
@@ -362,11 +365,17 @@ export function useToggleRepo() {
       // Optimistically update the cache
       queryClient.setQueryData(queryKeys.starredRepos, newStarredRepos)
       
-      // Also invalidate related PR queries
-      queryClient.invalidateQueries({ queryKey: queryKeys.repoStarredPRs })
-      
       try {
         await saveStarredRepos.mutateAsync(newStarredRepos)
+        
+        // Use enhanced cache management for better UX
+        await cacheManager.refreshPRData(repoFullName)
+        
+        // If adding a new repository, prefetch its data
+        if (isAdding) {
+          await cacheManager.prefetchRepositoryData(repoFullName)
+        }
+        
       } catch (error) {
         // Revert on error
         queryClient.setQueryData(queryKeys.starredRepos, currentStarredRepos)

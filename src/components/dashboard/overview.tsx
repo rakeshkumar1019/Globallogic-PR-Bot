@@ -85,23 +85,28 @@ export function Overview({ stats, selectedRepos, repositories, pullRequests, onT
   const [loading] = useState(false);
   const [repoSearchQuery, setRepoSearchQuery] = useState('');
   // Load from cache and update cache when data changes
+  // Prioritize fresh data over cache for better responsiveness
   useEffect(() => {
-    const cached = getCachedData(CACHE_KEYS.REPOSITORIES);
-    if (cached && repositories.length === 0) {
-      setCachedRepos(cached);
-    } else if (repositories.length > 0) {
+    if (repositories.length > 0) {
       setCachedRepos(repositories);
       setCachedData(CACHE_KEYS.REPOSITORIES, repositories);
+    } else {
+      const cached = getCachedData(CACHE_KEYS.REPOSITORIES);
+      if (cached) {
+        setCachedRepos(cached);
+      }
     }
   }, [repositories]);
 
   useEffect(() => {
-    const cached = getCachedData(CACHE_KEYS.PULL_REQUESTS);
-    if (cached && pullRequests.length === 0) {
-      setCachedPRs(cached);
-    } else if (pullRequests.length > 0) {
+    if (pullRequests.length > 0) {
       setCachedPRs(pullRequests);
       setCachedData(CACHE_KEYS.PULL_REQUESTS, pullRequests);
+    } else {
+      const cached = getCachedData(CACHE_KEYS.PULL_REQUESTS);
+      if (cached) {
+        setCachedPRs(cached);
+      }
     }
   }, [pullRequests]);
 

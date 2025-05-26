@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm';
 import { PullRequest } from '@/lib/github/api';
 import { AIReviewComment } from '@/lib/types';
 import { apiCache, CACHE_TTL } from '@/lib/cache';
+import { useLLMProviderCache } from '@/lib/hooks/useLLMProviderCache';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -39,6 +40,9 @@ export default function PRDetailPage() {
   const { data: session } = useSession();
   const params = useParams();
   
+  // Use cached LLM provider selection
+  const { selectedProvider, setSelectedProvider: setCachedProvider, isLoaded: providerCacheLoaded } = useLLMProviderCache();
+  
   const [pullRequest, setPullRequest] = useState<PullRequest | null>(null);
   const [reviewComments, setReviewComments] = useState<AIReviewComment[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -52,7 +56,6 @@ export default function PRDetailPage() {
   const [activeTab, setActiveTab] = useState('ai-review');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
-  const [selectedProvider, setSelectedProvider] = useState<'openai' | 'gemini'>('openai');
   const [providerSettings, setProviderSettings] = useState<{
     selectedProvider?: string;
     openaiApiKey?: string;
@@ -202,16 +205,18 @@ export default function PRDetailPage() {
 
   // Set default provider based on what's configured
   useEffect(() => {
-    if (providerSettings) {
+    if (providerSettings && providerCacheLoaded) {
       // Check which providers are configured and set the first available one as default
-      if (isProviderConfigured('openai')) {
-        setSelectedProvider('openai');
-      } else if (isProviderConfigured('gemini')) {
-        setSelectedProvider('gemini');
+      // Only update if current selection is not configured
+      if (!isProviderConfigured(selectedProvider)) {
+        if (isProviderConfigured('openai')) {
+          setCachedProvider('openai');
+        } else if (isProviderConfigured('gemini')) {
+          setCachedProvider('gemini');
+        }
       }
-      // If none are configured, keep the default 'openai'
     }
-  }, [providerSettings, isProviderConfigured]);
+  }, [providerSettings, providerCacheLoaded, selectedProvider, isProviderConfigured, setCachedProvider]);
 
   useEffect(() => {
     if (pullRequest && session?.accessToken) {
@@ -737,7 +742,7 @@ Please configure your AI settings in the Settings page and try again.`,
                     AI Code Review
                   </CardTitle>
                   <div className="flex items-center gap-3">
-                    <Select value={selectedProvider} onValueChange={(value) => setSelectedProvider(value as 'openai' | 'gemini')}>
+                    <Select value={selectedProvider} onValueChange={(value) => setCachedProvider(value as 'openai' | 'gemini')}>
                       <SelectTrigger className="w-[180px] h-8 text-xs">
                         <SelectValue placeholder="Select Provider" />
                       </SelectTrigger>
