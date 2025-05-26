@@ -10,6 +10,7 @@ import { AIReviewComment } from '@/lib/types';
 import { apiCache, CACHE_TTL } from '@/lib/cache';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +21,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SidebarLayout } from '@/components/layout/sidebar-layout';
 import { 
   GitBranch, Clock, FileText, Plus, Minus, Brain, Check, X, Send, 
-  AlertCircle, ChevronDown, ChevronRight, Eye, Code, Edit3, Save, RotateCcw, CheckCheck 
+  AlertCircle, ChevronDown, ChevronRight, Eye, Code, Edit3, Save, RotateCcw, CheckCheck,
+  Bot, Sparkles
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -40,7 +42,6 @@ export default function PRDetailPage() {
   const [pullRequest, setPullRequest] = useState<PullRequest | null>(null);
   const [reviewComments, setReviewComments] = useState<AIReviewComment[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [hasConfiguredSettings, setHasConfiguredSettings] = useState<boolean | null>(null);
   const [fileChanges, setFileChanges] = useState<FileChange[]>([]);
   const [isLoadingChanges, setIsLoadingChanges] = useState(true);
   const [isLoadingPR, setIsLoadingPR] = useState(true);
@@ -51,6 +52,15 @@ export default function PRDetailPage() {
   const [activeTab, setActiveTab] = useState('ai-review');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<'openai' | 'gemini'>('openai');
+  const [providerSettings, setProviderSettings] = useState<{
+    selectedProvider?: string;
+    openaiApiKey?: string;
+    openaiModel?: string;
+    geminiApiKey?: string;
+    geminiModel?: string;
+    ollamaModel?: string;
+  } | null>(null);
 
 
 
@@ -76,20 +86,28 @@ export default function PRDetailPage() {
       const response = await fetch(`/api/settings?user=${encodeURIComponent(session.user.email)}`);
       if (response.ok) {
         const settings = await response.json();
-        const hasProvider = settings?.selectedProvider && (
-          (settings.selectedProvider === 'openai' && settings.openaiApiKey) ||
-          (settings.selectedProvider === 'gemini' && settings.geminiApiKey) ||
-          (settings.selectedProvider === 'ollama' && settings.ollamaModel)
-        );
-        setHasConfiguredSettings(hasProvider);
-      } else {
-        setHasConfiguredSettings(false);
+        setProviderSettings(settings);
       }
     } catch (error) {
       console.error('Error checking settings:', error);
-      setHasConfiguredSettings(false);
     }
   }, [session?.user?.email]);
+
+  // Check if a provider is properly configured
+  const isProviderConfigured = useCallback((provider: string): boolean => {
+    if (!providerSettings) return false;
+    
+    switch (provider) {
+      case 'openai':
+        return !!(providerSettings.openaiApiKey && providerSettings.openaiModel);
+      case 'gemini':
+        return !!(providerSettings.geminiApiKey && providerSettings.geminiModel);
+      case 'ollama':
+        return false; // Disabled as per requirements
+      default:
+        return false;
+    }
+  }, [providerSettings]);
 
   const loadPullRequest = useCallback(async () => {
     if (!session?.accessToken) return;
@@ -182,6 +200,19 @@ export default function PRDetailPage() {
     }
   }, [session, params, loadPullRequest, checkUserSettings]);
 
+  // Set default provider based on what's configured
+  useEffect(() => {
+    if (providerSettings) {
+      // Check which providers are configured and set the first available one as default
+      if (isProviderConfigured('openai')) {
+        setSelectedProvider('openai');
+      } else if (isProviderConfigured('gemini')) {
+        setSelectedProvider('gemini');
+      }
+      // If none are configured, keep the default 'openai'
+    }
+  }, [providerSettings, isProviderConfigured]);
+
   useEffect(() => {
     if (pullRequest && session?.accessToken) {
       loadFileChanges();
@@ -190,6 +221,12 @@ export default function PRDetailPage() {
 
   const handleGenerateReview = async () => {
     if (!pullRequest || !session?.user?.email) return;
+
+    // Check if the selected provider is configured
+    if (!isProviderConfigured(selectedProvider)) {
+      setError('Please add API key and model in Settings before generating a review. Configure your LLM provider to continue.');
+      return;
+    }
 
     setIsGenerating(true);
     setError(null);
@@ -211,7 +248,9 @@ export default function PRDetailPage() {
         },
         body: JSON.stringify({
           user: session.user.email,
-          prData
+          prData,
+          // Always pass the selected provider
+          overrideProvider: selectedProvider
         })
       });
 
@@ -697,35 +736,73 @@ Please configure your AI settings in the Settings page and try again.`,
                     <Brain className="h-5 w-5 text-purple-600" />
                     AI Code Review
                   </CardTitle>
-                                  <div className="flex items-center gap-3">
-                  <Button onClick={handleGenerateReview} disabled={isGenerating} size="sm" className="bg-purple-600 hover:bg-purple-700 text-xs">
-                    {isGenerating ? (
-                      <div className="flex items-center gap-1">
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                        Generating...
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        <Brain className="h-3 w-3" />
-                        Generate Review
-                      </div>
-                    )}
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <Select value={selectedProvider} onValueChange={(value) => setSelectedProvider(value as 'openai' | 'gemini')}>
+                      <SelectTrigger className="w-[180px] h-8 text-xs">
+                        <SelectValue placeholder="Select Provider" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="openai" disabled={!isProviderConfigured('openai')}>
+                          <div className="flex items-center gap-2">
+                            <Bot className="h-4 w-4 text-gray-700" />
+                            OpenAI
+                            {!isProviderConfigured('openai') && <span className="text-red-500 text-xs">(Not configured)</span>}
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="gemini" disabled={!isProviderConfigured('gemini')}>
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-blue-600" />
+                            Gemini
+                            {!isProviderConfigured('gemini') && <span className="text-red-500 text-xs">(Not configured)</span>}
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button onClick={handleGenerateReview} disabled={isGenerating || !isProviderConfigured(selectedProvider)} size="sm" className="bg-purple-600 hover:bg-purple-700 text-xs">
+                      {isGenerating ? (
+                        <div className="flex items-center gap-1">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                          Generating...
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <Brain className="h-3 w-3" />
+                          Generate Review
+                        </div>
+                      )}
+                    </Button>
+                  </div>
                 </div>
-                </div>
+                {!isProviderConfigured(selectedProvider) && (
+                  <div className="px-4 py-2 bg-yellow-50 border-t border-yellow-200">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-yellow-800">
+                        ⚠️ LLM provider not configured. Add API key and model to generate reviews.
+                      </span>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => window.open('/settings', '_blank')}
+                        className="text-xs border-yellow-600 text-yellow-600 hover:bg-yellow-50"
+                      >
+                        Configure LLM
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="p-4">
                 {reviewComments.length === 0 ? (
                   <div className="flex items-center justify-center h-24 text-center">
                     <div>
                       <Brain className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                      {hasConfiguredSettings ? (
+                      {isProviderConfigured(selectedProvider) ? (
                         <p className="text-sm text-gray-600">
                           Click &ldquo;Generate Review&rdquo; to get AI insights
                         </p>
                       ) : (
                         <p className="text-sm text-gray-600">
-                          Configure AI provider to get intelligent reviews
+                          Configure LLM provider to get intelligent reviews
                         </p>
                       )}
                     </div>
