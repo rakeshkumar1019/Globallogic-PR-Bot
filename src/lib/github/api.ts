@@ -80,6 +80,37 @@ export interface PullRequestFilters {
   page?: number;
 }
 
+export interface PullRequestFile {
+  sha: string;
+  filename: string;
+  status: 'added' | 'removed' | 'modified' | 'renamed';
+  additions: number;
+  deletions: number;
+  changes: number;
+  blob_url: string;
+  raw_url: string;
+  contents_url: string;
+  patch?: string;
+}
+
+export interface PullRequestComment {
+  id: number;
+  url: string;
+  html_url: string;
+  user: {
+    login: string;
+    id: number;
+    avatar_url: string;
+  };
+  created_at: string;
+  updated_at: string;
+  body: string;
+  path?: string;
+  position?: number;
+  line?: number;
+  commit_id?: string;
+}
+
 export class GitHubClient {
   private accessToken: string;
 
@@ -308,5 +339,66 @@ export class GitHubClient {
       repo.full_name.toLowerCase().includes(query.toLowerCase()) ||
       (repo.description && repo.description.toLowerCase().includes(query.toLowerCase()))
     );
+  }
+
+  async getPullRequest(owner: string, repo: string, number: number): Promise<PullRequest> {
+    const cacheKey = `pr_detail:${owner}:${repo}:${number}:${this.accessToken.slice(-8)}`;
+    
+    // Check cache first
+    const cached = apiCache.get<PullRequest>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const pr = await this.request<PullRequest>(`/repos/${owner}/${repo}/pulls/${number}`);
+    const enhancedPr = {
+      ...pr,
+      changed_files: pr.changed_files || 0,
+      additions: pr.additions || 0,
+      deletions: pr.deletions || 0,
+      mergeable: pr.mergeable || false,
+      mergeable_state: pr.mergeable_state || 'unknown',
+      merged: pr.merged || false,
+      draft: pr.draft || false,
+    };
+    
+    apiCache.set(cacheKey, enhancedPr, CACHE_TTL.PULL_REQUESTS);
+    return enhancedPr;
+  }
+
+  async getPullRequestFiles(owner: string, repo: string, number: number): Promise<PullRequestFile[]> {
+    const cacheKey = `pr_files:${owner}:${repo}:${number}:${this.accessToken.slice(-8)}`;
+    
+    // Check cache first
+    const cached = apiCache.get<PullRequestFile[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const files = await this.request<PullRequestFile[]>(`/repos/${owner}/${repo}/pulls/${number}/files`);
+    apiCache.set(cacheKey, files, CACHE_TTL.PULL_REQUESTS);
+    return files;
+  }
+
+  async getPullRequestComments(owner: string, repo: string, number: number): Promise<PullRequestComment[]> {
+    const cacheKey = `pr_comments:${owner}:${repo}:${number}:${this.accessToken.slice(-8)}`;
+    
+    // Check cache first
+    const cached = apiCache.get<PullRequestComment[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    // Get both review comments and issue comments
+    const [reviewComments, issueComments] = await Promise.all([
+      this.request<PullRequestComment[]>(`/repos/${owner}/${repo}/pulls/${number}/comments`),
+      this.request<PullRequestComment[]>(`/repos/${owner}/${repo}/issues/${number}/comments`)
+    ]);
+
+    const allComments = [...reviewComments, ...issueComments]
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    
+    apiCache.set(cacheKey, allComments, CACHE_TTL.PULL_REQUESTS);
+    return allComments;
   }
 } 

@@ -1,10 +1,17 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { GitHubClient, Repository, PullRequest } from '@/lib/github/api';
+import { PullRequest } from '@/lib/github/api';
 import { SidebarLayout } from '@/components/layout/sidebar-layout';
+import { 
+  useRepositories, 
+  useStarredRepos, 
+  usePullRequests, 
+  useStarredReposPullRequests,
+  useToggleRepo 
+} from '@/lib/query/github-queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -22,15 +29,27 @@ type ViewType = 'list' | 'grid';
 type RepoFilterType = 'all' | string;
 
 export function DashboardContent() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   
-
-  const [repositories, setRepositories] = useState<Repository[]>([]);
-  const [pullRequests, setPullRequests] = useState<PullRequest[]>([]);
-  const [selectedRepos, setSelectedRepos] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // TanStack Query hooks
+  const { data: repositories = [], isLoading: repositoriesLoading, error: repositoriesError } = useRepositories();
+  const { data: selectedRepos = new Set<string>(), isLoading: starredLoading } = useStarredRepos();
+  
+  // Fetch pull requests for selected repositories with optimized caching
+  const { data: starredPullRequests = [], isLoading: starredPRsLoading } = useStarredReposPullRequests();
+  const { data: pullRequests = [], isLoading: pullRequestsLoading, error: pullRequestsError } = usePullRequests(
+    selectedRepos, 
+    repositories
+  );
+  
+  // Use starred PRs if available and matches current selection, otherwise use regular PRs
+  const activePullRequests = starredPullRequests.length > 0 ? starredPullRequests : pullRequests;
+  const activePRsLoading = starredPRsLoading || pullRequestsLoading;
+  
+  const { toggleRepo } = useToggleRepo();
+  
+  // Local state for UI
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [viewType, setViewType] = useState<ViewType>('list');
@@ -38,18 +57,32 @@ export function DashboardContent() {
   const [repoSearchQuery, setRepoSearchQuery] = useState('');
   const [repoViewType, setRepoViewType] = useState<ViewType>('list');
   const [repoFilter, setRepoFilter] = useState<RepoFilterType>('all');
+  
+  // Smart loading states - only show loading if we don't have any data yet
+  const hasRepositoriesData = repositories.length > 0;
+  const hasStarredData = selectedRepos.size >= 0; // Always has data (can be empty set)
+  const hasPullRequestsData = activePullRequests.length >= 0; // Always has data (can be empty array)
+  
+  // Only show loading for initial data fetch, not subsequent fetches
+  const isInitialLoading = (repositoriesLoading && !hasRepositoriesData) || 
+                          (starredLoading && !hasStarredData);
+  
+  // Show pull requests loading only if we're specifically loading PRs and have no PR data
+  const isPRLoading = activePRsLoading && !hasPullRequestsData && selectedRepos.size > 0;
+  
+  const error = repositoriesError?.message || pullRequestsError?.message || null;
 
   const stats = useMemo(() => {
-    const totalPRs = pullRequests.length;
-    const readyForReview = pullRequests.filter(pr => !pr.draft && pr.state === 'open').length;
-    const draftPRs = pullRequests.filter(pr => pr.draft).length;
+    const totalPRs = activePullRequests.length;
+    const readyForReview = activePullRequests.filter(pr => !pr.draft && pr.state === 'open').length;
+    const draftPRs = activePullRequests.filter(pr => pr.draft).length;
     
     return { totalPRs, readyForReview, draftPRs };
-  }, [pullRequests]);
+  }, [activePullRequests]);
 
   // Filter PRs based on active filter, repository filter, and search query
   const filteredPRs = useMemo(() => {
-    let filtered = pullRequests;
+    let filtered = activePullRequests;
 
     // Apply PR status filter
     switch (activeFilter) {
@@ -81,7 +114,7 @@ export function DashboardContent() {
     }
 
     return filtered;
-  }, [pullRequests, activeFilter, repoFilter, selectedRepos, searchQuery]);
+  }, [activePullRequests, activeFilter, repoFilter, selectedRepos, searchQuery]);
 
   // Filter repositories based on search query
   const filteredRepositories = useMemo(() => {
@@ -96,128 +129,12 @@ export function DashboardContent() {
     );
   }, [repositories, repoSearchQuery]);
 
-  // Load starred repos from MongoDB
-  const loadStarredRepos = useCallback(async () => {
-    try {
-      const response = await fetch('/api/starred-repos');
-      if (response.ok) {
-        const data = await response.json();
-        setSelectedRepos(new Set(data.starredRepositories));
-      }
-    } catch (error) {
-      console.error('Error loading starred repositories:', error);
-    }
-  }, []);
-
-  // Save starred repos to MongoDB
-  const saveStarredRepos = useCallback(async (repos: Set<string>) => {
-    try {
-      const response = await fetch('/api/starred-repos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ starredRepositories: Array.from(repos) })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to save starred repositories');
-      }
-    } catch (error) {
-      console.error('Error saving starred repositories:', error);
-      setError('Failed to save repository selection');
-    }
-  }, []);
-
-  const loadInitialData = useCallback(async () => {
-    if (!session?.accessToken) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const github = new GitHubClient(session.accessToken);
-      
-      const repos = await github.getUserRepositories();
-      
-      setRepositories(repos);
-      
-      await loadStarredRepos();
-    } catch (err) {
-      console.error('Error loading GitHub data:', err);
-      setError('Failed to load GitHub data. Please check your connection and try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, [session?.accessToken, loadStarredRepos]);
-
-  const loadPullRequests = useCallback(async () => {
-    if (!session?.accessToken || selectedRepos.size === 0) {
-      setPullRequests([]);
-      return;
-    }
-
-    setLoading(true);
-    
-    try {
-      const github = new GitHubClient(session.accessToken);
-      const allPRs: PullRequest[] = [];
-      
-      const selectedRepoList = repositories.filter(repo => selectedRepos.has(repo.full_name));
-      
-      for (const repo of selectedRepoList) {
-        const [owner, repoName] = repo.full_name.split('/');
-        if (owner && repoName) {
-          try {
-            const result = await github.getRepositoryPullRequests(owner, repoName, {
-              state: 'open',
-              sort: 'updated',
-              direction: 'desc',
-              per_page: 20
-            });
-            allPRs.push(...result.pullRequests);
-          } catch (error) {
-            console.warn(`Failed to load PRs for ${repo.full_name}:`, error);
-          }
-        }
-      }
-      
-      allPRs.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-      setPullRequests(allPRs);
-    } catch (err) {
-      console.error('Error loading pull requests:', err);
-      setError('Failed to load pull requests. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, [session?.accessToken, selectedRepos, repositories]);
-
+  // Reset repository filter if current selection is no longer valid
   useEffect(() => {
-    if (status === 'authenticated' && session?.accessToken) {
-      loadInitialData();
-    }
-  }, [status, session, loadInitialData]);
-
-  useEffect(() => {
-    if (repositories.length > 0 && selectedRepos.size > 0) {
-      loadPullRequests();
-    }
-    
-    // Reset repository filter if current selection is no longer valid
     if (repoFilter !== 'all' && !selectedRepos.has(repoFilter)) {
       setRepoFilter('all');
     }
-  }, [selectedRepos, repositories, loadPullRequests, repoFilter]);
-
-  const toggleRepo = useCallback(async (repoFullName: string) => {
-    const newSelectedRepos = new Set(selectedRepos);
-    if (newSelectedRepos.has(repoFullName)) {
-      newSelectedRepos.delete(repoFullName);
-    } else {
-      newSelectedRepos.add(repoFullName);
-    }
-    
-    setSelectedRepos(newSelectedRepos);
-    await saveStarredRepos(newSelectedRepos);
-  }, [selectedRepos, saveStarredRepos]);
+  }, [selectedRepos, repoFilter]);
 
   // Helper functions
   const getTimeAgo = (dateString: string): string => {
@@ -244,7 +161,15 @@ export function DashboardContent() {
     router.push(`/pull-request/review/${pr.base?.repo?.owner?.login}/${pr.base?.repo?.name}/${pr.number}`);
   };
 
-  if (status === 'loading' || (loading && repositories.length === 0)) {
+  const handleToggleRepo = async (repoFullName: string) => {
+    try {
+      await toggleRepo(repoFullName);
+    } catch (error) {
+      console.error('Error toggling repository:', error);
+    }
+  };
+
+  if (status === 'loading' || (isInitialLoading && repositories.length === 0)) {
     return (
       <SidebarLayout title="Dashboard">
         <div className="flex items-center justify-center min-h-[50vh]">
@@ -291,12 +216,11 @@ export function DashboardContent() {
                 <div className="w-2.5 h-2.5 bg-gray-500 rounded-full"></div>
                 <span className="text-gray-700 text-xs">{stats.draftPRs} Draft</span>
               </div>
-
             </div>
           </div>
         </div>
 
-        {/* Repository Selector - Light theme professional design */}
+        {/* Repository Selector */}
         <Card className="border border-gray-200 bg-white shadow-sm">
           <CardContent className="p-0">
             <div 
@@ -393,7 +317,7 @@ export function DashboardContent() {
                                     : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 bg-white'
                                 }`
                           }`}
-                          onClick={() => toggleRepo(repo.full_name)}
+                          onClick={() => handleToggleRepo(repo.full_name)}
                         >
                           {repoViewType === 'list' ? (
                             // List View
@@ -488,8 +412,6 @@ export function DashboardContent() {
                     </div>
                   )}
                 </div>
-
-
               </div>
             )}
           </CardContent>
@@ -522,7 +444,7 @@ export function DashboardContent() {
               </SelectContent>
             </Select>
 
-            {/* Repository Filter - Only show if repositories are selected */}
+            {/* Repository Filter */}
             {selectedRepos.size > 0 && (
               <Select value={repoFilter} onValueChange={(value) => setRepoFilter(value as RepoFilterType)}>
                 <SelectTrigger className="w-[160px] h-8 text-sm">
@@ -689,11 +611,11 @@ export function DashboardContent() {
           </div>
         )}
 
-        {/* Loading indicator */}
-        {loading && pullRequests.length > 0 && (
+        {/* Loading indicator for pull requests */}
+        {isPRLoading && (
           <div className="flex items-center justify-center py-4">
             <div className="w-5 h-5 border-2 border-gray-300 border-t-black rounded-full animate-spin"></div>
-            <span className="ml-2 text-gray-600 text-sm">Loading more pull requests...</span>
+            <span className="ml-2 text-gray-600 text-sm">Loading pull requests...</span>
           </div>
         )}
       </div>
