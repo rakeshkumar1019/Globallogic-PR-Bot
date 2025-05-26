@@ -29,14 +29,36 @@ import {
 
 export function NavUser({
   user,
+  isLoading = false,
 }: {
   user: {
     name: string
     email: string
     avatar: string
   }
+  isLoading?: boolean
 }) {
   const { isMobile } = useSidebar()
+
+  if (isLoading) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            size="lg"
+            className="cursor-default"
+          >
+            <div className="h-8 w-8 rounded-lg bg-gray-200 animate-pulse"></div>
+            <div className="grid flex-1 text-left text-sm leading-tight">
+              <div className="h-4 bg-gray-200 rounded animate-pulse mb-1"></div>
+              <div className="h-3 bg-gray-200 rounded animate-pulse w-3/4"></div>
+            </div>
+            <div className="ml-auto size-4 bg-gray-200 rounded animate-pulse"></div>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    )
+  }
 
   return (
     <SidebarMenu>

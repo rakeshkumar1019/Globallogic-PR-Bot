@@ -3,10 +3,9 @@
 import * as React from "react"
 import { useSession } from "next-auth/react"
 import {
-  GitPullRequest,
   Home,
   Settings,
-  GitBranch,
+  Bot,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -21,7 +20,7 @@ import {
 } from "@/components/ui/sidebar"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
 
   // Dynamic user data from session
   const userData = {
@@ -34,7 +33,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const teams = [
     {
       name: "PR.AI",
-      logo: GitPullRequest,
+      logo: Bot,
       plan: "by Velocity AI",
     },
   ]
@@ -46,16 +45,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       url: "/dashboard",
       icon: Home,
       isActive: true,
-    },
-    {
-      title: "Pull Requests",
-              url: "/pull-request",
-      icon: GitPullRequest,
-    },
-    {
-      title: "Repositories",
-      url: "/repositories",
-      icon: GitBranch,
     },
     {
       title: "Settings",
@@ -73,7 +62,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain items={navMain} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={userData} />
+        <NavUser user={userData} isLoading={status === 'loading'} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
